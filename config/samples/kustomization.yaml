@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- mlflow.server_v1_mlflowserverconfig.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

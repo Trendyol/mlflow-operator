@@ -1,0 +1,14 @@
+apiVersion: mlflow.server.trendyol.com/v1
+kind: MlflowServerConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: mlflowserverconfig
+    app.kubernetes.io/instance: mlflowserverconfig-sample
+    app.kubernetes.io/part-of: mlflow-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: mlflow-operator
+  name: mlflowserverconfig-sample
+spec:
+  image: erayarslan/mlflow:v2.4.1
+  configMapName: mlflow-cm
+  replicas: 1

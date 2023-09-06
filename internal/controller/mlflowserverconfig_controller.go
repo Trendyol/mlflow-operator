@@ -48,6 +48,10 @@ type MlflowServerConfigReconciler struct {
 //+kubebuilder:rbac:groups=mlflow.server.trendyol.com,resources=mlflowserverconfigs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=mlflow.server.trendyol.com,resources=mlflowserverconfigs/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=mlflow.server.trendyol.com,resources=mlflowserverconfigs/finalizers,verbs=update
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
+//+kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=services/status,verbs=get
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -322,9 +326,9 @@ func (r *MlflowServerConfigReconciler) getLatestModels() []LatestVersion {
 		var response RegisteredModelsResponse
 		var err error
 		if nextPageToken != nil {
-			err = getJson(fmt.Sprintf("http://localhost:5000/api/2.0/mlflow/registered-models/search?page_token=%s", *nextPageToken), &response)
+			err = getJson(fmt.Sprintf("http://mlflowserverconfig-sample.mlflow-operator-system:5000/api/2.0/mlflow/registered-models/search?page_token=%s", *nextPageToken), &response)
 		} else {
-			err = getJson("http://localhost:5000/api/2.0/mlflow/registered-models/search", &response)
+			err = getJson("http://mlflowserverconfig-sample.mlflow-operator-system:5000/api/2.0/mlflow/registered-models/search", &response)
 		}
 
 		if err != nil {
@@ -401,5 +405,6 @@ func (r *MlflowServerConfigReconciler) SetupWithManager(mgr ctrl.Manager) error 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mlflowserverv1.MlflowServerConfig{}).
 		Owns(&v1.Deployment{}).
+		Owns(&v12.Service{}).
 		Complete(r)
 }

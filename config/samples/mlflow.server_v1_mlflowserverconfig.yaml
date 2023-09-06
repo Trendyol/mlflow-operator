@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: mlflow-operator
   name: mlflowserverconfig-sample
+  namespace: mlflow-operator-system
 spec:
   image: erayarslan/mlflow:v2.4.1
   configMapName: mlflow-cm

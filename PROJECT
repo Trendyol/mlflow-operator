@@ -13,8 +13,8 @@ resources:
     namespaced: true
   controller: true
   domain: trendyol.com
-  group: mlflow.server
-  kind: MlflowServerConfig
-  path: github.com/Trendyol/mlflow-operator/api/v1
-  version: v1
+  group: mlflow
+  kind: MLFlow
+  path: github.com/Trendyol/mlflow-operator/api/v1beta1
+  version: v1beta1
 version: "3"

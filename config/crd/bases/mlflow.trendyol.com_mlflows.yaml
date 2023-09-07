@@ -4,21 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.12.0
-  name: mlflowserverconfigs.mlflow.server.trendyol.com
+  name: mlflows.mlflow.trendyol.com
 spec:
-  group: mlflow.server.trendyol.com
+  group: mlflow.trendyol.com
   names:
-    kind: MlflowServerConfig
-    listKind: MlflowServerConfigList
-    plural: mlflowserverconfigs
-    singular: mlflowserverconfig
+    kind: MLFlow
+    listKind: MLFlowList
+    plural: mlflows
+    singular: mlflow
   scope: Namespaced
   versions:
-  - name: v1
+  - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: MlflowServerConfig is the Schema for the mlflowserverconfigs
-          API
+        description: MLFlow is the Schema for the mlflows API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,14 +32,14 @@ spec:
           metadata:
             type: object
           spec:
-            description: MlflowServerConfigSpec defines the desired state of MlflowServerConfig
+            description: MLFlowSpec defines the desired state of MLFlow
             properties:
               configMapName:
-                description: Name of the ConfigMap for MlflowServerConfigSpec's configuration
+                description: Name of the ConfigMap for MLFlowSpec's configuration
                 minLength: 1
                 type: string
               image:
-                description: Image of the MLflow server
+                description: Image of the MLFlow server
                 type: string
               replicas:
                 description: Quantity of instances
@@ -51,7 +50,7 @@ spec:
             - configMapName
             type: object
           status:
-            description: MlflowServerConfigStatus defines the observed state of MlflowServerConfig
+            description: MLFlowStatus defines the observed state of MLFlow
             properties:
               active:
                 description: Active is the active instance of the MLflow server deployment

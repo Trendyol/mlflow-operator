@@ -41,9 +41,9 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - mlflow.server.trendyol.com
+  - mlflow.trendyol.com
   resources:
-  - mlflowserverconfigs
+  - mlflows
   verbs:
   - create
   - delete
@@ -53,15 +53,15 @@ rules:
   - update
   - watch
 - apiGroups:
-  - mlflow.server.trendyol.com
+  - mlflow.trendyol.com
   resources:
-  - mlflowserverconfigs/finalizers
+  - mlflows/finalizers
   verbs:
   - update
 - apiGroups:
-  - mlflow.server.trendyol.com
+  - mlflow.trendyol.com
   resources:
-  - mlflowserverconfigs/status
+  - mlflows/status
   verbs:
   - get
   - patch

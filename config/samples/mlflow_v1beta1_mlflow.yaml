@@ -9,6 +9,6 @@ metadata:
     app.kubernetes.io/created-by: mlflow-operator
   name: mlflow-sample
 spec:
-  image: erayarslan/mlflow:v2.4.1
+  image: erayarslan/mlflow:v2.6.0
   configMapName: mlflow-cm
   replicas: 1

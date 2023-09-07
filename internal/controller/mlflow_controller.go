@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
 )
 
 // MLFlowReconciler reconciles a MLFlow object
@@ -41,6 +42,7 @@ type MLFlowReconciler struct {
 	HttpClient       *util.HttpClient
 	MlflowService    *mlflow.Service
 	MlflowKubernetes *mlflow.Kubernetes
+	Debug            bool
 }
 
 //+kubebuilder:rbac:groups=mlflow.trendyol.com,resources=mlflows,verbs=get;list;watch;create;update;patch;delete
@@ -63,7 +65,7 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return reconcile.Result{}, client.IgnoreNotFound(err)
 	} else {
 		if r.MlflowService == nil {
-			r.MlflowService = mlflow.NewService(mlflowServerConfig.Name, mlflowServerConfig.Namespace, r.HttpClient)
+			r.MlflowService = mlflow.NewService(mlflowServerConfig.Name, mlflowServerConfig.Namespace, r.HttpClient, r.Debug)
 		}
 	}
 
@@ -73,7 +75,37 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return reconcile.Result{}, err
 	}
 
-	deployment, err := r.MlflowKubernetes.CreateMlflowDeployment(req.Name, req.Namespace, &mlflowServerConfig)
+	var volumes []string
+
+	if r.Debug {
+		mlartifactsPvc, err := r.MlflowKubernetes.CreateMlflowPersistence(req.Name, req.Namespace, "mlartifacts", &mlflowServerConfig)
+		if err != nil {
+			logger.Error(err, "unable to create MlflowPersistence for MlflowServerConfig")
+			return reconcile.Result{}, err
+		}
+		mlrunsPvc, err := r.MlflowKubernetes.CreateMlflowPersistence(req.Name, req.Namespace, "mlruns", &mlflowServerConfig)
+		if err != nil {
+			logger.Error(err, "unable to create MlflowPersistence for MlflowServerConfig")
+			return reconcile.Result{}, err
+		}
+
+		err = r.Create(ctx, mlartifactsPvc)
+		if err != nil && !errors.IsAlreadyExists(err) {
+			logger.Error(err, "unable to create MlflowPersistence for MlflowServerConfig")
+			return reconcile.Result{}, err
+		}
+
+		err = r.Create(ctx, mlrunsPvc)
+		if err != nil && !errors.IsAlreadyExists(err) {
+			logger.Error(err, "unable to create MlflowPersistence for MlflowServerConfig")
+			return reconcile.Result{}, err
+		}
+
+		volumes = append(volumes, mlartifactsPvc.Name)
+		volumes = append(volumes, mlrunsPvc.Name)
+	}
+
+	deployment, err := r.MlflowKubernetes.CreateMlflowDeployment(req.Name, req.Namespace, &mlflowServerConfig, volumes)
 
 	existingDeployment := &appsv1.Deployment{}
 	err = r.Get(ctx, types.NamespacedName{Name: deployment.Name, Namespace: deployment.Namespace}, existingDeployment)
@@ -109,7 +141,20 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return reconcile.Result{Requeue: true}, nil
 		} else {
 			logger.Info("Deployment is ready", deployment.Namespace, deployment.Name)
-			models, err := r.MlflowService.GetLatestModelVersion()
+
+			job, err := r.MlflowKubernetes.CreateMlflowWineQualityJob(req.Name, req.Namespace, &mlflowServerConfig)
+			if err != nil {
+				logger.Error(err, "unable to create Job for MlflowServerConfig when creating job")
+				return reconcile.Result{}, err
+			}
+
+			err = r.Create(ctx, job)
+			if err != nil && !errors.IsAlreadyExists(err) {
+				logger.Error(err, "unable to create Job for MlflowServerConfig when pushing to k8s")
+				return reconcile.Result{}, err
+			}
+
+			models, err := r.MlflowService.GetLatestModels()
 			if err != nil {
 				logger.Error(err, "unable to get latest model version")
 				return reconcile.Result{}, err
@@ -117,14 +162,14 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 			for _, model := range models {
 				logger.Info("Found model", model.Name, model.Version)
-				modelDeployment, err := r.MlflowKubernetes.CreateMlflowModelDeployment(req.Name, req.Namespace, &mlflowServerConfig, model.Name, model.Version)
+				modelDeployment, err := r.MlflowKubernetes.CreateMlflowModelDeployment(req.Name+"-"+strings.ToLower(model.Name)+"-"+model.Version, req.Namespace, &mlflowServerConfig, model.Name, model.Version)
 				if err != nil {
 					logger.Error(err, "unable to create Deployment for Model when creating model deployment")
 					return reconcile.Result{}, err
 				}
 
 				err = r.Create(ctx, modelDeployment)
-				if err != nil {
+				if err != nil && !errors.IsAlreadyExists(err) {
 					logger.Error(err, "unable to create Deployment for Model when pushing to k8s")
 					return reconcile.Result{}, err
 				}

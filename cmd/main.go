@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"github.com/Trendyol/mlflow-operator/internal/mlflow"
 	"github.com/Trendyol/mlflow-operator/internal/util"
 	"os"
 
@@ -53,11 +54,13 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var debug bool
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&debug, "debug", false, "Enable debug mode")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -96,6 +99,11 @@ func main() {
 		Client:     mgr.GetClient(),
 		Scheme:     mgr.GetScheme(),
 		HttpClient: httpClient,
+		Debug:      debug,
+		MlflowKubernetes: &mlflow.Kubernetes{
+			Scheme: mgr.GetScheme(),
+			Debug:  debug,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MLFlow")
 		os.Exit(1)

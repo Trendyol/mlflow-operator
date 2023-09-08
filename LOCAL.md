@@ -25,7 +25,7 @@ ports:
     protocol: TCP
     targetPort: 8443
 ```
-4. You can check by going `localhost:30050`
+4. You can check by going `https://localhost:30050`
 5. In order to see all namespaces etc. you should configure ClusterRoleBinding
 Copy yml below and extract it a file (for example named as `admin-for-kubedashboard.yml`) and apply it (`kubectl apply -f admin-for-kubedashboard.yml`)
 ```yml

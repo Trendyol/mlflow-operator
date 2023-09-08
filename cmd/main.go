@@ -120,6 +120,10 @@ func main() {
 	}
 
 	setupLog.Info("starting manager")
+
+	if debug {
+		setupLog.Info("application is debug mode")
+	}
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)

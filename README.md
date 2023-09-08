@@ -47,6 +47,9 @@ It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controlle
 which provide a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster.
 
 ### Test It Out
+0. You must ensure that doing [LOCAL.md](LOCAL.md) steps for running on your local machine.
+
+
 1. Install the CRDs into the cluster:
 
 ```sh

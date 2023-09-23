@@ -6,11 +6,17 @@ import (
 	"time"
 )
 
-type HttpClient struct {
+type HTTPClient struct {
 	client *http.Client
 }
 
-func (h *HttpClient) GetJSON(url string, target interface{}) error {
+func NewHTTPClient() *HTTPClient {
+	return &HTTPClient{
+		client: &http.Client{Timeout: 10 * time.Second},
+	}
+}
+
+func (h *HTTPClient) GetJSON(url string, target interface{}) error {
 	r, err := h.client.Get(url)
 	if err != nil {
 		return err
@@ -19,10 +25,4 @@ func (h *HttpClient) GetJSON(url string, target interface{}) error {
 	defer r.Body.Close()
 
 	return json.NewDecoder(r.Body).Decode(target)
-}
-
-func NewHttpClient() *HttpClient {
-	return &HttpClient{
-		client: &http.Client{Timeout: 10 * time.Second},
-	}
 }

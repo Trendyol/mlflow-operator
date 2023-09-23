@@ -35,16 +35,11 @@ spec:
             description: MLFlowSpec defines the desired state of MLFlow
             properties:
               configMapName:
-                description: Name of the ConfigMap for MLFlowSpec's configuration
-                minLength: 1
                 type: string
               image:
-                description: Image of the MLFlow server
                 type: string
               replicas:
-                description: Quantity of instances
                 format: int32
-                minimum: 1
                 type: integer
             required:
             - configMapName

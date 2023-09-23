@@ -2,6 +2,8 @@ package mlflow
 
 import (
 	"fmt"
+	"strings"
+
 	mlflowv1beta1 "github.com/Trendyol/mlflow-operator/api/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -11,39 +13,39 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strings"
 )
 
-type Kubernetes struct {
+type ObjectManager struct {
 	Scheme *runtime.Scheme
 	Debug  bool
 }
 
-func (k *Kubernetes) CreateMlflowModelDeployment(name string, namespace string, config *mlflowv1beta1.MLFlow, modelName string, version string) (*appsv1.Deployment, error) {
+func (om *ObjectManager) CreateMlflowModelDeploymentObject(name string, namespace string, config *mlflowv1beta1.MLFlow, model Model) (*appsv1.Deployment, error) {
 	var replicas int32 = 1
-	var _name = name + "-model"
+
+	depName := model.GenerateDeploymentName(name)
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      _name,
+			Name:      depName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app": _name,
+				"app": depName,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": _name,
+					"app": depName,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": _name}},
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": depName}},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:            _name,
+							Name:            depName,
 							Image:           "erayarslan/mlflow_serve:v2.6.0-conda",
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Env: []corev1.EnvVar{
@@ -57,7 +59,7 @@ func (k *Kubernetes) CreateMlflowModelDeployment(name string, namespace string, 
 								"models",
 								"serve",
 								"-m",
-								fmt.Sprintf("models:/%s/%s", modelName, version),
+								fmt.Sprintf("models:/%s/%s", model.Name, model.Version),
 								"--host",
 								"0.0.0.0",
 								"--env-manager",
@@ -70,14 +72,14 @@ func (k *Kubernetes) CreateMlflowModelDeployment(name string, namespace string, 
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(config, deployment, k.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(config, deployment, om.Scheme); err != nil {
 		return nil, err
 	}
 
 	return deployment, nil
 }
 
-func (k *Kubernetes) CreateMlflowService(name string, namespace string, config *mlflowv1beta1.MLFlow) (*corev1.Service, error) {
+func (om *ObjectManager) CreateMlflowServiceObject(name string, namespace string, config *mlflowv1beta1.MLFlow) (*corev1.Service, error) {
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -105,89 +107,92 @@ func (k *Kubernetes) CreateMlflowService(name string, namespace string, config *
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(config, service, k.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(config, service, om.Scheme); err != nil {
 		return nil, err
 	}
 
 	return service, nil
 }
 
-func (k *Kubernetes) CreateMlflowDeployment(name string, namespace string, config *mlflowv1beta1.MLFlow, volumes []string) (*appsv1.Deployment, error) {
-	var env []corev1.EnvVar
-	var args = []string{
+func (om *ObjectManager) CreateVolumeObject(volumes []string) []corev1.Volume {
+	volumeList := make([]corev1.Volume, 0, len(volumes))
+
+	for _, volume := range volumes {
+		volumeList = append(volumeList, corev1.Volume{
+			Name: volume,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: volume,
+				},
+			},
+		})
+	}
+
+	return volumeList
+}
+
+func (om *ObjectManager) CreateVolumeMountObject(volumes []string) []corev1.VolumeMount {
+	volumeMountList := make([]corev1.VolumeMount, 0, len(volumes))
+
+	for _, volume := range volumes {
+		volumeMountList = append(volumeMountList, corev1.VolumeMount{
+			Name:      volume,
+			MountPath: fmt.Sprintf("/%s", strings.Split(volume, "-")[2]),
+		})
+	}
+
+	return volumeMountList
+}
+
+func (om *ObjectManager) CreateMlflowDeploymentObject(name string, namespace string, config *mlflowv1beta1.MLFlow) (*appsv1.Deployment, error) {
+	args := []string{
 		"server",
 		"--serve-artifacts",
 		"--host",
 		"0.0.0.0",
+		"--artifacts-destination",
+		"s3://mlflow",
+		"--backend-store-uri",
+		"postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)",
 	}
 
-	var volumeList []corev1.Volume
-	var volumeMountList []corev1.VolumeMount
-
-	if !k.Debug {
-		env = []corev1.EnvVar{
-			{
-				Name:  "AWS_ACCESS_KEY_ID",
-				Value: "cAUnfrfQ2uGfeB9Y",
-			},
-			{
-				Name:  "AWS_SECRET_ACCESS_KEY",
-				Value: "8vjDVvwlDS07m4dOWw4vwUh9ReFFdCf1",
-			},
-			{
-				Name:  "MLFLOW_S3_ENDPOINT_URL",
-				Value: "https://minio.minio.svc.cluster.local",
-			},
-			{
-				Name:  "MLFLOW_S3_IGNORE_TLS",
-				Value: "true",
-			},
-			{
-				Name:  "DB_USER",
-				Value: "admin",
-			},
-			{
-				Name:  "DB_PASSWORD",
-				Value: "123456",
-			},
-			{
-				Name:  "DB_HOST",
-				Value: "postgres.postgres",
-			},
-			{
-				Name:  "DB_PORT",
-				Value: "5432",
-			},
-			{
-				Name:  "DB_NAME",
-				Value: "mlflow",
-			},
-		}
-		args = append(args,
-			"--artifacts-destination",
-			"s3://mlflow",
-			"--backend-store-uri",
-			"postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)",
-		)
-	}
-
-	if k.Debug {
-		for _, volume := range volumes {
-			volumeList = append(volumeList, corev1.Volume{
-				Name: volume,
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: volume,
-					},
-				},
-			})
-		}
-		for _, volume := range volumes {
-			volumeMountList = append(volumeMountList, corev1.VolumeMount{
-				Name:      volume,
-				MountPath: fmt.Sprintf("/%s", strings.Split(volume, "-")[2]),
-			})
-		}
+	env := []corev1.EnvVar{
+		{
+			Name:  "AWS_ACCESS_KEY_ID",
+			Value: "cAUnfrfQ2uGfeB9Y",
+		},
+		{
+			Name:  "AWS_SECRET_ACCESS_KEY",
+			Value: "8vjDVvwlDS07m4dOWw4vwUh9ReFFdCf1",
+		},
+		{
+			Name:  "MLFLOW_S3_ENDPOINT_URL",
+			Value: "https://minio.minio.svc.cluster.local",
+		},
+		{
+			Name:  "MLFLOW_S3_IGNORE_TLS",
+			Value: "true",
+		},
+		{
+			Name:  "DB_USER",
+			Value: "admin",
+		},
+		{
+			Name:  "DB_PASSWORD",
+			Value: "123456",
+		},
+		{
+			Name:  "DB_HOST",
+			Value: "postgres.postgres",
+		},
+		{
+			Name:  "DB_PORT",
+			Value: "5432",
+		},
+		{
+			Name:  "DB_NAME",
+			Value: "mlflow",
+		},
 	}
 
 	deployment := &appsv1.Deployment{
@@ -216,23 +221,21 @@ func (k *Kubernetes) CreateMlflowDeployment(name string, namespace string, confi
 							Env:             env,
 							Command:         []string{"mlflow"},
 							Args:            args,
-							VolumeMounts:    volumeMountList,
 						},
 					},
-					Volumes: volumeList,
 				},
 			},
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(config, deployment, k.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(config, deployment, om.Scheme); err != nil {
 		return nil, err
 	}
 
 	return deployment, nil
 }
 
-func (k *Kubernetes) CreateMlflowPersistence(name string, namespace string, folder string, config *mlflowv1beta1.MLFlow) (*corev1.PersistentVolumeClaim, error) {
+func (om *ObjectManager) CreateMlflowPVCObject(name string, namespace string, folder string, config *mlflowv1beta1.MLFlow) (*corev1.PersistentVolumeClaim, error) {
 	storageClassName := "hostpath"
 	volumeMode := corev1.PersistentVolumeFilesystem
 
@@ -265,15 +268,15 @@ func (k *Kubernetes) CreateMlflowPersistence(name string, namespace string, fold
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(config, pvc, k.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(config, pvc, om.Scheme); err != nil {
 		return nil, err
 	}
 
 	return pvc, nil
 }
 
-func (k *Kubernetes) CreateMlflowWineQualityJob(name string, namespace string, config *mlflowv1beta1.MLFlow) (*batchv1.Job, error) {
-	backoffLimit := int32(4)
+func (om *ObjectManager) CreateMlflowWineQualityJobObject(name string, namespace string, config *mlflowv1beta1.MLFlow) (*batchv1.Job, error) {
+	var backoffLimit int32 = 4
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -306,7 +309,7 @@ func (k *Kubernetes) CreateMlflowWineQualityJob(name string, namespace string, c
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(config, job, k.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(config, job, om.Scheme); err != nil {
 		return nil, err
 	}
 

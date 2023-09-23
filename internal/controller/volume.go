@@ -28,8 +28,8 @@ func (r *MLFlowReconciler) ConfigureVolumesAndEnvs(ctx context.Context, req ctrl
 		return nil
 	}
 
-	deployment.Spec.Template.Spec.Volumes = r.MlflowResourceManager.CreateVolumeObject(simulatedVolumes)
-	deployment.Spec.Template.Spec.Containers[0].VolumeMounts = r.MlflowResourceManager.CreateVolumeMountObject(simulatedVolumes)
+	deployment.Spec.Template.Spec.Volumes = r.MlflowObjectManager.CreateVolumeObject(simulatedVolumes)
+	deployment.Spec.Template.Spec.Containers[0].VolumeMounts = r.MlflowObjectManager.CreateVolumeMountObject(simulatedVolumes)
 
 	return nil
 }
@@ -53,7 +53,7 @@ func (r *MLFlowReconciler) GetSimulatedVolumes(ctx context.Context, req ctrl.Req
 }
 
 func (r *MLFlowReconciler) CreateMlArtifactsPVC(ctx context.Context, req ctrl.Request, mlflowServerConfig *mlflowv1beta1.MLFlow) (*corev1.PersistentVolumeClaim, error) {
-	mlartifactsPvc, err := r.MlflowResourceManager.CreateMlflowPVCObject(req.Name, req.Namespace, "mlartifacts", mlflowServerConfig)
+	mlartifactsPvc, err := r.MlflowObjectManager.CreateMlflowPVCObject(req.Name, req.Namespace, "mlartifacts", mlflowServerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create MlflowPersistence for mlflowserverconfig %w", err)
 	}
@@ -67,7 +67,7 @@ func (r *MLFlowReconciler) CreateMlArtifactsPVC(ctx context.Context, req ctrl.Re
 }
 
 func (r *MLFlowReconciler) CreateMlrunsPVC(ctx context.Context, req ctrl.Request, mlflowServerConfig *mlflowv1beta1.MLFlow) (*corev1.PersistentVolumeClaim, error) {
-	mlrunsPvc, err := r.MlflowResourceManager.CreateMlflowPVCObject(req.Name, req.Namespace, "mlruns", mlflowServerConfig)
+	mlrunsPvc, err := r.MlflowObjectManager.CreateMlflowPVCObject(req.Name, req.Namespace, "mlruns", mlflowServerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create MlflowPersistence for mlflowserverconfig %w", err)
 	}

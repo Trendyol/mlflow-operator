@@ -101,7 +101,7 @@ func main() {
 		Scheme:     mgr.GetScheme(),
 		HTTPClient: httpClient,
 		Debug:      debug,
-		MlflowResourceManager: &mlflow.ObjectManager{
+		MlflowObjectManager: &mlflow.ObjectManager{
 			Scheme: mgr.GetScheme(),
 			Debug:  debug,
 		},

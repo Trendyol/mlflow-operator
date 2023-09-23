@@ -38,12 +38,12 @@ import (
 
 // MLFlowReconciler reconciles a MLFlow object
 type MLFlowReconciler struct {
-	K8sClient             client.Client
-	Scheme                *runtime.Scheme
-	HTTPClient            *util.HTTPClient
-	MlflowClient          *mlflow.Client
-	MlflowResourceManager *mlflow.ObjectManager
-	Debug                 bool
+	K8sClient           client.Client
+	Scheme              *runtime.Scheme
+	HTTPClient          *util.HTTPClient
+	MlflowClient        *mlflow.Client
+	MlflowObjectManager *mlflow.ObjectManager
+	Debug               bool
 }
 
 //+kubebuilder:rbac:groups=mlflow.trendyol.com,resources=mlflows,verbs=get;list;watch;create;update;patch;delete
@@ -67,7 +67,7 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return reconcile.Result{}, err
 	}
 
-	deployment, err := r.MlflowResourceManager.CreateMlflowDeploymentObject(req.Name, req.Namespace, &mlflowServerConfig)
+	deployment, err := r.MlflowObjectManager.CreateMlflowDeploymentObject(req.Name, req.Namespace, &mlflowServerConfig)
 	if err != nil {
 		logger.Error(err, "unable to set ownership on deployment resource")
 		return reconcile.Result{}, err
@@ -97,7 +97,7 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return reconcile.Result{}, err
 		}
 
-		service, err := r.MlflowResourceManager.CreateMlflowServiceObject(req.Name, req.Namespace, &mlflowServerConfig)
+		service, err := r.MlflowObjectManager.CreateMlflowServiceObject(req.Name, req.Namespace, &mlflowServerConfig)
 		if err != nil {
 			logger.Error(err, "unable to create Client for MlflowServerConfig when creating service")
 			return reconcile.Result{}, err
@@ -118,7 +118,7 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	logger.Info("Deployment is ready")
 
-	job, err := r.MlflowResourceManager.CreateMlflowWineQualityJobObject(req.Name, req.Namespace, &mlflowServerConfig)
+	job, err := r.MlflowObjectManager.CreateMlflowWineQualityJobObject(req.Name, req.Namespace, &mlflowServerConfig)
 	if err != nil {
 		logger.Error(err, "unable to create Job for MlflowServerConfig when creating job")
 		return reconcile.Result{}, err
@@ -138,7 +138,7 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	for i := range models {
-		modelDeployment, err := r.MlflowResourceManager.CreateMlflowModelDeploymentObject(req.Name, req.Namespace, &mlflowServerConfig, models[i])
+		modelDeployment, err := r.MlflowObjectManager.CreateMlflowModelDeploymentObject(req.Name, req.Namespace, &mlflowServerConfig, models[i])
 		if err != nil {
 			logger.Error(err, "unable to create Deployment for Model when creating model deployment")
 			return reconcile.Result{}, err

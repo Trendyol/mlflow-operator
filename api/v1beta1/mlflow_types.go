@@ -56,10 +56,11 @@ type MLFlowStatus struct {
 
 // MLFlow is the Schema for the mlflows API
 type MLFlow struct {
-	Status            MLFlowStatus `json:"status,omitempty"`
-	Spec              MLFlowSpec   `json:"spec,omitempty"`
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   MLFlowSpec   `json:"spec,omitempty"`
+	Status MLFlowStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

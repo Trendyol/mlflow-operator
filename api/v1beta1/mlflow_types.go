@@ -26,9 +26,19 @@ import (
 
 // MLFlowSpec defines the desired state of MLFlow
 type MLFlowSpec struct {
-	Image         string `json:"image,omitempty"`
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
+
+	// Image of the MLFlow server
+	Image string `json:"image,omitempty"`
+
+	// Name of the ConfigMap for MLFlowSpec's configuration
+	// +kubebuilder:validation:MinLength=1
 	ConfigMapName string `json:"configMapName"`
-	Replicas      int32  `json:"replicas,omitempty"`
+
+	// Quantity of instances
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas,omitempty"`
 }
 
 // MLFlowStatus defines the observed state of MLFlow

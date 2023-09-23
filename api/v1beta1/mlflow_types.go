@@ -32,13 +32,13 @@ type MLFlowSpec struct {
 	// Image of the MLFlow server
 	Image string `json:"image,omitempty"`
 
-	// Name of the ConfigMap for MLFlowSpec's configuration
-	// +kubebuilder:validation:MinLength=1
-	ConfigMapName string `json:"configMapName"`
-
 	// Quantity of instances
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas,omitempty"`
+
+	// Name of the ConfigMap for MLFlowSpec's configuration
+	// +kubebuilder:validation:MinLength=1
+	ConfigMapName string `json:"configMapName"`
 }
 
 // MLFlowStatus defines the observed state of MLFlow

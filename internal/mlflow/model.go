@@ -1,5 +1,7 @@
 package mlflow
 
+import "strings"
+
 type LatestVersion struct {
 	Name         string `json:"name"`
 	Version      string `json:"version"`
@@ -13,8 +15,8 @@ type RegisteredModel struct {
 }
 
 type RegisteredModelsResponse struct {
-	RegisteredModels []RegisteredModel `json:"registered_models"`
 	NextPageToken    *string           `json:"next_page_token,omitempty"`
+	RegisteredModels []RegisteredModel `json:"registered_models"`
 }
 
 type ModelVersion struct {
@@ -22,11 +24,21 @@ type ModelVersion struct {
 }
 
 type ModelVersionsResponse struct {
-	ModelVersions []ModelVersion `json:"model_versions"`
 	NextPageToken *string        `json:"next_page_token,omitempty"`
+	ModelVersions []ModelVersion `json:"model_versions"`
 }
 
 type Model struct {
 	Name    string
 	Version string
 }
+
+func (m Model) ToLowerName() string {
+	return strings.ToLower(m.Name)
+}
+
+func (m Model) GenerateDeploymentName(reqName string) string {
+	return reqName + "-" + m.ToLowerName() + "-" + m.Version + "-" + "model"
+}
+
+type Models []Model

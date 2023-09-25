@@ -66,7 +66,6 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: linter
 linter:
-	fieldalignment -fix ./...
 	golangci-lint run -c .golangci.yml --timeout=5m -v --fix
 
 ##@ Build

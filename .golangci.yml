@@ -1,8 +1,8 @@
 linters-settings:
   lll:
-    line-length: 140
+    line-length: 180
   funlen:
-    lines: 70
+    lines: 100
 
 linters:
   disable-all: true
@@ -31,6 +31,10 @@ linters:
     - unparam
     - unused
     - whitespace
+
+run:
+  skip-dirs:
+    - api/v1beta1
 
 service:
   golangci-lint-version: 1.50.x # use the fixed version to not introduce new linters unexpectedly

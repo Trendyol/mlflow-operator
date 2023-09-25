@@ -18,9 +18,10 @@ package main
 
 import (
 	"flag"
+	"os"
+
 	"github.com/Trendyol/mlflow-operator/internal/mlflow"
 	"github.com/Trendyol/mlflow-operator/internal/util"
-	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -93,14 +94,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	httpClient := util.NewHttpClient()
+	httpClient := util.NewHTTPClient()
 
 	if err = (&controller.MLFlowReconciler{
-		Client:     mgr.GetClient(),
+		K8sClient:  mgr.GetClient(),
 		Scheme:     mgr.GetScheme(),
-		HttpClient: httpClient,
+		HTTPClient: httpClient,
 		Debug:      debug,
-		MlflowKubernetes: &mlflow.Kubernetes{
+		MlflowObjectManager: &mlflow.ObjectManager{
 			Scheme: mgr.GetScheme(),
 			Debug:  debug,
 		},

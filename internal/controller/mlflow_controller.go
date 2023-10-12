@@ -18,9 +18,9 @@ package controller
 
 import (
 	"context"
-
 	mlflowv1beta1 "github.com/Trendyol/mlflow-operator/api/v1beta1"
 	"github.com/Trendyol/mlflow-operator/internal/mlflow"
+	"github.com/Trendyol/mlflow-operator/internal/mlflow/service"
 	"github.com/Trendyol/mlflow-operator/internal/util"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -41,7 +41,7 @@ type MLFlowReconciler struct {
 	K8sClient           client.Client
 	Scheme              *runtime.Scheme
 	HTTPClient          *util.HTTPClient
-	MlflowClient        *mlflow.Client
+	MlflowClient        *service.Client
 	MlflowObjectManager *mlflow.ObjectManager
 	Debug               bool
 }
@@ -138,7 +138,26 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	for i := range models {
-		modelDeployment, err := r.MlflowObjectManager.CreateMlflowModelDeploymentObject(req.Name, req.Namespace, &mlflowServerConfig, models[i])
+		modelDetails, modelDetailsErr := r.MlflowClient.GetModelVersionDetail(models[i].Name, models[i].Version)
+		if modelDetailsErr != nil {
+			// TODO: maybe backoff?
+			logger.Error(modelDetailsErr, "failed to get model details")
+		}
+
+		mlFlowOperatorTags := modelDetails.Tags.GetMlFlowOperatorTags()
+
+		modelDeployment, err := r.MlflowObjectManager.CreateMlflowModelDeploymentObject(mlflow.MlflowModelDeploymentObjectConfig{
+			Name:               req.Name,
+			Namespace:          req.Namespace,
+			MlFlowServerConfig: &mlflowServerConfig,
+			Model:              models[i],
+			CPURequest:         mlFlowOperatorTags.CPURequest,
+			CPULimit:           mlFlowOperatorTags.CPULimit,
+			MemoryRequest:      mlFlowOperatorTags.MemoryRequest,
+			MemoryLimit:        mlFlowOperatorTags.MemoryLimit,
+			MlFlowTrackingUri:  "http://mlflow-sample:5000",            // TODO:
+			MlFlowModelImage:   "erayarslan/mlflow_serve:v2.6.0-conda", // TODO: decide how to set
+		})
 		if err != nil {
 			logger.Error(err, "unable to create Deployment for Model when creating model deployment")
 			return reconcile.Result{}, err
@@ -148,6 +167,7 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			logger.Error(err, "unable to create Deployment for Model when pushing to k8s")
 			return reconcile.Result{}, err
 		}
+
 	}
 
 	if r.IsThereAnyChangeOnDeployment(deployment, existingDeployment) {
@@ -174,7 +194,7 @@ func (r *MLFlowReconciler) InitializeMlflowClient(mlflowServerCfg *mlflowv1beta1
 		return
 	}
 
-	r.MlflowClient = mlflow.NewClient(mlflowServerCfg, r.HTTPClient, r.Debug)
+	r.MlflowClient = service.NewClient(mlflowServerCfg, r.HTTPClient, r.Debug)
 }
 
 func (r *MLFlowReconciler) CreateMLFlowService(ctx context.Context, service *corev1.Service) error {

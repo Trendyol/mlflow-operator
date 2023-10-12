@@ -1,11 +1,15 @@
-package mlflow
+package service
 
 import (
 	"fmt"
-	"net/url"
-
 	mlflowv1beta1 "github.com/Trendyol/mlflow-operator/api/v1beta1"
+	"github.com/Trendyol/mlflow-operator/internal/mlflow"
 	"github.com/Trendyol/mlflow-operator/internal/util"
+	"net/url"
+)
+
+const (
+	defaultNamespace = "default"
 )
 
 type Client struct {
@@ -18,7 +22,7 @@ func NewClient(mlflowServerCfg *mlflowv1beta1.MLFlow, httpClient *util.HTTPClien
 		httpClient: httpClient,
 	}
 
-	if mlflowServerCfg.Namespace == "default" {
+	if mlflowServerCfg.Namespace == defaultNamespace {
 		client.BaseURL = fmt.Sprintf("http://%s:5000/api/2.0/mlflow", mlflowServerCfg.Name)
 	} else {
 		client.BaseURL = fmt.Sprintf("http://%s.%s:5000/api/2.0/mlflow", mlflowServerCfg.Name, mlflowServerCfg.Namespace)
@@ -31,8 +35,8 @@ func NewClient(mlflowServerCfg *mlflowv1beta1.MLFlow, httpClient *util.HTTPClien
 	return client
 }
 
-func (m *Client) GetLatestModels() (Models, error) {
-	var models Models
+func (m *Client) GetLatestModels() (mlflow.Models, error) {
+	var models mlflow.Models
 	var nextPageToken *string
 
 	for {
@@ -55,7 +59,7 @@ func (m *Client) GetLatestModels() (Models, error) {
 			}
 
 			for _, version := range versions {
-				models = append(models, Model{
+				models = append(models, mlflow.Model{
 					Name:    model.Name,
 					Version: version.Version,
 				})
@@ -97,4 +101,17 @@ func (m *Client) getModelVersions(name string) ([]ModelVersion, error) {
 	}
 
 	return versions, nil
+}
+
+func (m *Client) GetModelVersionDetail(name, version string) (*ModelVersionDetailResponse, error) {
+	var response ModelVersionDetailResponse
+	queryParams := url.Values{}
+	queryParams.Add("name", name)
+	queryParams.Add("version", version)
+	err := m.httpClient.GetJSON(fmt.Sprintf("%s/model-versions/get?%s", m.BaseURL, queryParams.Encode()), &response)
+	if err != nil {
+		return nil, err
+	}
+
+	return &response, nil
 }

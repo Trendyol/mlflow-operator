@@ -1,8 +1,6 @@
-package mlflow
+package service
 
-import (
-	"testing"
-)
+import "testing"
 
 // TODO: testini yazalım
 func TestNewService(t *testing.T) {

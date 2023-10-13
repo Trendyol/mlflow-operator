@@ -2,27 +2,39 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/hashicorp/go-retryablehttp"
 	"net/http"
-	"time"
 )
 
-type HTTPClient struct {
-	client *http.Client
+type HTTPClient interface {
+	GetJSON(url string, target interface{}) error
 }
 
-func NewHTTPClient() *HTTPClient {
-	return &HTTPClient{
-		client: &http.Client{Timeout: 10 * time.Second},
+type httpClient struct {
+	client *retryablehttp.Client
+}
+
+func NewHTTPClient() HTTPClient {
+	retryableClient := retryablehttp.NewClient()
+	retryableClient.RetryMax = 3
+	//retryableClient.Backoff = retryablehttp.LinearJitterBackoff(time.Millisecond * 100) // Adjust the backoff strategy
+
+	return &httpClient{
+		client: retryableClient,
 	}
 }
 
-func (h *HTTPClient) GetJSON(url string, target interface{}) error {
-	r, err := h.client.Get(url)
+func (h *httpClient) GetJSON(url string, target interface{}) error {
+	resp, err := h.client.Get(url)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
-	defer r.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP request failed with status: %s", resp.Status)
+	}
 
-	return json.NewDecoder(r.Body).Decode(target)
+	return json.NewDecoder(resp.Body).Decode(target)
 }

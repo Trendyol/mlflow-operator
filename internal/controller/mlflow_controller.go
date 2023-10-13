@@ -144,9 +144,9 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			logger.Error(modelDetailsErr, "failed to get model details")
 		}
 
-		mlFlowOperatorTags := modelDetails.Tags.GetMlFlowOperatorTags()
+		mlFlowOperatorTags := modelDetails.Tags.GetOperatorTags()
 
-		modelDeployment, err := r.MlflowObjectManager.CreateMlflowModelDeploymentObject(mlflow.MlflowModelDeploymentObjectConfig{
+		modelDeployment, err := r.MlflowObjectManager.CreateMlflowModelDeploymentObject(mlflow.ModelDeploymentObjectConfig{
 			Name:               req.Name,
 			Namespace:          req.Namespace,
 			MlFlowServerConfig: &mlflowServerConfig,

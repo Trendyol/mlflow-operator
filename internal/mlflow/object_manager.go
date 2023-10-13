@@ -24,7 +24,7 @@ type ObjectManager struct {
 	Debug  bool
 }
 
-func (om *ObjectManager) CreateMlflowModelDeploymentObject(config MlflowModelDeploymentObjectConfig) (*appsv1.Deployment, error) {
+func (om *ObjectManager) CreateMlflowModelDeploymentObject(config ModelDeploymentObjectConfig) (*appsv1.Deployment, error) {
 	var replicas int32 = 1
 
 	depName := config.Model.GenerateDeploymentName(config.Name)

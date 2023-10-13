@@ -2,7 +2,7 @@ package mlflow
 
 import mlflowv1beta1 "github.com/Trendyol/mlflow-operator/api/v1beta1"
 
-type MlflowModelDeploymentObjectConfig struct {
+type ModelDeploymentObjectConfig struct {
 	Name               string
 	Namespace          string
 	MlFlowServerConfig *mlflowv1beta1.MLFlow

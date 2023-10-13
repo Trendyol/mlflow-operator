@@ -1,14 +1,14 @@
 package service
 
 const (
-	prefixMLFlowTag      = "mlflowOperator-"
-	cpuRequestTagName    = prefixMLFlowTag + "cpuRequest"
-	cpuLimitTagName      = prefixMLFlowTag + "cpuLimit"
-	memoryRequestTagName = prefixMLFlowTag + "memoryRequest"
-	memoryLimitTagName   = prefixMLFlowTag + "memoryLimit"
+	tagPrefix            = "mlflowOperator-"
+	cpuRequestTagName    = tagPrefix + "cpuRequest"
+	cpuLimitTagName      = tagPrefix + "cpuLimit"
+	memoryRequestTagName = tagPrefix + "memoryRequest"
+	memoryLimitTagName   = tagPrefix + "memoryLimit"
 )
 
-type MlFlowOperatorTags struct {
+type OperatorTags struct {
 	CPURequest    string
 	CPULimit      string
 	MemoryRequest string
@@ -17,7 +17,7 @@ type MlFlowOperatorTags struct {
 
 // TODO: validate tags to fit kubernetes standards if validation fails update status of ml flow model via ml flow api
 
-func (t Tags) GetMlFlowOperatorTags() (mlFlowOperatorTags MlFlowOperatorTags) {
+func (t Tags) GetOperatorTags() (mlFlowOperatorTags OperatorTags) {
 	for _, tag := range t {
 		switch tag.Key {
 		case cpuRequestTagName:

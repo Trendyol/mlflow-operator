@@ -18,7 +18,6 @@ type httpClient struct {
 func NewHTTPClient() HTTPClient {
 	retryableClient := retryablehttp.NewClient()
 	retryableClient.RetryMax = 3
-	//retryableClient.Backoff = retryablehttp.LinearJitterBackoff(time.Millisecond * 100) // Adjust the backoff strategy
 
 	return &httpClient{
 		client: retryableClient,

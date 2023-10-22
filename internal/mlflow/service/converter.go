@@ -1,5 +1,7 @@
 package service
 
+import "k8s.io/apimachinery/pkg/api/resource"
+
 const (
 	tagPrefix            = "mlflowOperator-"
 	cpuRequestTagName    = tagPrefix + "cpuRequest"
@@ -9,25 +11,38 @@ const (
 )
 
 type OperatorTags struct {
-	CPURequest    string
-	CPULimit      string
-	MemoryRequest string
-	MemoryLimit   string
+	CPURequest    resource.Quantity
+	CPULimit      resource.Quantity
+	MemoryRequest resource.Quantity
+	MemoryLimit   resource.Quantity
 }
 
 // TODO: validate tags to fit kubernetes standards if validation fails update status of ml flow model via ml flow api
+// TODO: set default cpu and mem resources if related tag not found
 
 func (t Tags) GetOperatorTags() (mlFlowOperatorTags OperatorTags) {
 	for _, tag := range t {
 		switch tag.Key {
 		case cpuRequestTagName:
-			mlFlowOperatorTags.CPURequest = tag.Value
+			quantity, err := resource.ParseQuantity(tag.Value)
+			if err == nil {
+				mlFlowOperatorTags.CPURequest = quantity
+			}
 		case cpuLimitTagName:
-			mlFlowOperatorTags.CPULimit = tag.Value
+			quantity, err := resource.ParseQuantity(tag.Value)
+			if err == nil {
+				mlFlowOperatorTags.CPULimit = quantity
+			}
 		case memoryRequestTagName:
-			mlFlowOperatorTags.MemoryRequest = tag.Value
+			quantity, err := resource.ParseQuantity(tag.Value)
+			if err == nil {
+				mlFlowOperatorTags.MemoryRequest = quantity
+			}
 		case memoryLimitTagName:
-			mlFlowOperatorTags.MemoryLimit = tag.Value
+			quantity, err := resource.ParseQuantity(tag.Value)
+			if err == nil {
+				mlFlowOperatorTags.MemoryLimit = quantity
+			}
 		}
 	}
 	return

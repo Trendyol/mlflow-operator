@@ -34,6 +34,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sync"
+	"time"
 )
 
 // MLFlowReconciler reconciles a MLFlow object
@@ -117,6 +119,11 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	logger.Info("Deployment is ready")
+	var once sync.Once
+	once.Do(func() {
+		r.InitializeMlflowClient(&mlflowServerConfig)
+		r.MlFlowModelSync(deployment.Namespace, &mlflowServerConfig)
+	})
 
 	job, err := r.MlflowObjectManager.CreateMlflowWineQualityJobObject(req.Name, req.Namespace, &mlflowServerConfig)
 	if err != nil {
@@ -127,47 +134,6 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err := r.CreateMLFlowWineQualityJob(ctx, job); err != nil {
 		logger.Error(err, "unable to create Job for MlflowServerConfig when pushing to k8s")
 		return reconcile.Result{}, err
-	}
-
-	r.InitializeMlflowClient(&mlflowServerConfig)
-
-	models, err := r.MlflowClient.GetLatestModels()
-	if err != nil {
-		logger.Error(err, "unable to get latest models")
-		return reconcile.Result{}, err
-	}
-
-	for i := range models {
-		modelDetails, modelDetailsErr := r.MlflowClient.GetModelVersionDetail(models[i].Name, models[i].Version)
-		if modelDetailsErr != nil {
-			// TODO: maybe backoff?
-			logger.Error(modelDetailsErr, "failed to get model details")
-		}
-
-		mlFlowOperatorTags := modelDetails.Tags.GetOperatorTags()
-
-		modelDeployment, err := r.MlflowObjectManager.CreateMlflowModelDeploymentObject(mlflow.ModelDeploymentObjectConfig{
-			Name:               req.Name,
-			Namespace:          req.Namespace,
-			MlFlowServerConfig: &mlflowServerConfig,
-			Model:              models[i],
-			CPURequest:         mlFlowOperatorTags.CPURequest,
-			CPULimit:           mlFlowOperatorTags.CPULimit,
-			MemoryRequest:      mlFlowOperatorTags.MemoryRequest,
-			MemoryLimit:        mlFlowOperatorTags.MemoryLimit,
-			MlFlowTrackingUri:  "http://mlflow-sample:5000",            // TODO:
-			MlFlowModelImage:   "erayarslan/mlflow_serve:v2.6.0-conda", // TODO: decide how to set
-		})
-		if err != nil {
-			logger.Error(err, "unable to create Deployment for Model when creating model deployment")
-			return reconcile.Result{}, err
-		}
-
-		if err := r.CreateMLFlowModelDeployment(ctx, modelDeployment); err != nil {
-			logger.Error(err, "unable to create Deployment for Model when pushing to k8s")
-			return reconcile.Result{}, err
-		}
-
 	}
 
 	if r.IsThereAnyChangeOnDeployment(deployment, existingDeployment) {
@@ -234,4 +200,52 @@ func (r *MLFlowReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Complete(r)
+}
+
+func (r *MLFlowReconciler) MlFlowModelSync(namespace string, mlflowServerConfig *mlflowv1beta1.MLFlow) {
+	ctx := context.Background()
+	logger := log.FromContext(ctx)
+	t := time.NewTicker(time.Second * 10)
+
+tickerLoop:
+	for range t.C {
+		models, getModelsErr := r.MlflowClient.GetLatestModels()
+		if getModelsErr != nil {
+			logger.Error(getModelsErr, "unable to get latest models")
+			continue tickerLoop
+		}
+
+	modelLoop:
+		for _, model := range models {
+			modelDetails, modelDetailsErr := r.MlflowClient.GetModelVersionDetail(model.Name, model.Version)
+			if modelDetailsErr != nil {
+				// TODO: maybe backoff?
+				logger.Error(modelDetailsErr, "failed to get model details")
+				continue modelLoop
+			}
+
+			mlFlowOperatorTags := modelDetails.Tags.GetOperatorTags()
+			modelDeployment, modelDeploymentErr := r.MlflowObjectManager.CreateMlflowModelDeploymentObject(mlflow.ModelDeploymentObjectConfig{
+				Name:               model.Name,
+				Namespace:          namespace,
+				MlFlowServerConfig: mlflowServerConfig,
+				Model:              model,
+				CPURequest:         mlFlowOperatorTags.CPURequest,
+				CPULimit:           mlFlowOperatorTags.CPULimit,
+				MemoryRequest:      mlFlowOperatorTags.MemoryRequest,
+				MemoryLimit:        mlFlowOperatorTags.MemoryLimit,
+				MlFlowTrackingUri:  "http://mlflow-sample:5000",            // TODO:
+				MlFlowModelImage:   "erayarslan/mlflow_serve:v2.6.0-conda", // TODO: decide how to set
+			})
+			if modelDeploymentErr != nil {
+				logger.Error(modelDeploymentErr, "unable to create Deployment for Model when creating model deployment")
+				continue modelLoop
+			}
+
+			if createModelDeploymentErr := r.CreateMLFlowModelDeployment(ctx, modelDeployment); createModelDeploymentErr != nil {
+				logger.Error(createModelDeploymentErr, "unable to create Deployment for Model when pushing to k8s")
+				continue modelLoop
+			}
+		}
+	}
 }

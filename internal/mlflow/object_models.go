@@ -1,16 +1,19 @@
 package mlflow
 
-import mlflowv1beta1 "github.com/Trendyol/mlflow-operator/api/v1beta1"
+import (
+	mlflowv1beta1 "github.com/Trendyol/mlflow-operator/api/v1beta1"
+	"k8s.io/apimachinery/pkg/api/resource"
+)
 
 type ModelDeploymentObjectConfig struct {
 	Name               string
 	Namespace          string
 	MlFlowServerConfig *mlflowv1beta1.MLFlow
 	Model              Model
-	CPURequest         string
-	CPULimit           string
-	MemoryRequest      string
-	MemoryLimit        string
+	CPURequest         resource.Quantity
+	CPULimit           resource.Quantity
+	MemoryRequest      resource.Quantity
+	MemoryLimit        resource.Quantity
 	MlFlowTrackingUri  string
 	MlFlowModelImage   string
 }

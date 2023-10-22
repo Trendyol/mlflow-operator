@@ -60,12 +60,12 @@ func (om *ObjectManager) CreateMlflowModelDeploymentObject(config ModelDeploymen
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse(config.CPULimit),
-									corev1.ResourceMemory: resource.MustParse(config.MemoryLimit),
+									corev1.ResourceCPU:    config.CPULimit,
+									corev1.ResourceMemory: config.MemoryLimit,
 								},
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse(config.CPURequest),
-									corev1.ResourceMemory: resource.MustParse(config.MemoryRequest),
+									corev1.ResourceCPU:    config.CPURequest,
+									corev1.ResourceMemory: config.MemoryRequest,
 								},
 							},
 							Command: []string{"mlflow"},

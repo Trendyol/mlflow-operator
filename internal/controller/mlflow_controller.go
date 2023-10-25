@@ -39,7 +39,7 @@ import (
 type MLFlowReconciler struct {
 	K8sClient           client.Client
 	Scheme              *runtime.Scheme
-	HTTPClient          *util.HTTPClient
+	HTTPClient          util.HTTPClient
 	MlflowClient        *mlflow.Client
 	MlflowObjectManager *mlflow.ObjectManager
 	Debug               bool

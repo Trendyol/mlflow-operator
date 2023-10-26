@@ -213,7 +213,7 @@ func (r *MLFlowReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *MLFlowReconciler) MlFlowModelSync(namespace string, mlflowServerConfig *mlflowv1beta1.MLFlow) {
 	ctx := context.Background()
 	logger := log.FromContext(ctx)
-	t := time.NewTicker(time.Second * 10)
+	t := time.NewTicker(time.Second * time.Duration(mlflowServerConfig.Spec.ModelSyncPeriodInMinutes))
 
 tickerLoop:
 	for range t.C {
@@ -242,8 +242,8 @@ tickerLoop:
 				CPULimit:           mlFlowOperatorTags.CPULimit,
 				MemoryRequest:      mlFlowOperatorTags.MemoryRequest,
 				MemoryLimit:        mlFlowOperatorTags.MemoryLimit,
-				MlFlowTrackingUri:  "http://mlflow-sample:5000",            // TODO:
-				MlFlowModelImage:   "erayarslan/mlflow_serve:v2.6.0-conda", // TODO: decide how to set
+				MlFlowTrackingUri:  "http://mlflow-sample:5000",        // TODO:
+				MlFlowModelImage:   mlflowServerConfig.Spec.ModelImage, // TODO: decide how to set
 			})
 			if modelDeploymentErr != nil {
 				logger.Error(modelDeploymentErr, "unable to create Deployment for Model when creating model deployment")

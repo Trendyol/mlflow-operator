@@ -32,6 +32,12 @@ type MLFlowSpec struct {
 	// Image of the MLFlow server
 	Image string `json:"image,omitempty"`
 
+	// Image of the MLFlow model
+	ModelImage string `json:"modelImage,omitempty"`
+
+	// Image of the MLFlow model
+	ModelSyncPeriodInMinutes int `json:"modelSyncPeriodInMinutes,omitempty"`
+
 	// Quantity of instances
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas,omitempty"`

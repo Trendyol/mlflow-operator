@@ -41,6 +41,12 @@ spec:
               image:
                 description: Image of the MLFlow server
                 type: string
+              modelImage:
+                description: Image of the MLFlow model
+                type: string
+              modelSyncPeriodInMinutes:
+                description: Image of the MLFlow model
+                type: integer
               replicas:
                 description: Quantity of instances
                 format: int32

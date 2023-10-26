@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Trendyol/mlflow-operator/internal/mlflow"
 	"github.com/Trendyol/mlflow-operator/mock"
 	"testing"
 )
@@ -35,7 +36,7 @@ func TestGetLatestModels(t *testing.T) {
 		t.Errorf("Expected 9 models, but got %d", len(models))
 	}
 
-	expectedModels := Models{
+	expectedModels := mlflow.Models{
 		{Name: "ModelA", Version: "2"},
 		{Name: "ModelB", Version: "1"},
 		{Name: "ModelC", Version: "1"},

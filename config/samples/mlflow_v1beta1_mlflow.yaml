@@ -10,5 +10,7 @@ metadata:
   name: mlflow-sample
 spec:
   image: erayarslan/mlflow:v2.6.0
+  modelSyncPeriodInMinutes: 1
+  modelImage: erayarslan/mlflow_serve:v2.6.0-conda
   configMapName: mlflow-cm
   replicas: 1

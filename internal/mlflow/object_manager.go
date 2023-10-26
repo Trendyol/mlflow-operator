@@ -15,43 +15,57 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+const (
+	appLabelKey = "app"
+)
+
 type ObjectManager struct {
 	Scheme *runtime.Scheme
 	Debug  bool
 }
 
-func (om *ObjectManager) CreateMlflowModelDeploymentObject(name string, namespace string, config *mlflowv1beta1.MLFlow, model Model) (*appsv1.Deployment, error) {
+func (om *ObjectManager) CreateMlflowModelDeploymentObject(config ModelDeploymentObjectConfig) (*appsv1.Deployment, error) {
 	var replicas int32 = 1
 
-	depName := model.GenerateDeploymentName(name)
+	depName := config.Model.GenerateDeploymentName(config.Name)
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
-			Namespace: namespace,
+			Namespace: config.Namespace,
 			Labels: map[string]string{
-				"app": depName,
+				appLabelKey: depName,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": depName,
+					appLabelKey: depName,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": depName}},
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{appLabelKey: depName}},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
 							Name:            depName,
-							Image:           "erayarslan/mlflow_serve:v2.6.0-conda",
+							Image:           config.MlFlowModelImage,
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Env: []corev1.EnvVar{
 								{
 									Name:  "MLFLOW_TRACKING_URI",
-									Value: "http://mlflow-sample:5000",
+									Value: config.MlFlowTrackingUri,
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    config.CPULimit,
+									corev1.ResourceMemory: config.MemoryLimit,
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    config.CPURequest,
+									corev1.ResourceMemory: config.MemoryRequest,
 								},
 							},
 							Command: []string{"mlflow"},
@@ -59,7 +73,7 @@ func (om *ObjectManager) CreateMlflowModelDeploymentObject(name string, namespac
 								"models",
 								"serve",
 								"-m",
-								fmt.Sprintf("models:/%s/%s", model.Name, model.Version),
+								fmt.Sprintf("models:/%s/%s", config.Model.Name, config.Model.Version),
 								"--host",
 								"0.0.0.0",
 								"--env-manager",
@@ -72,7 +86,7 @@ func (om *ObjectManager) CreateMlflowModelDeploymentObject(name string, namespac
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(config, deployment, om.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(config.MlFlowServerConfig, deployment, om.Scheme); err != nil {
 		return nil, err
 	}
 
@@ -213,6 +227,7 @@ func (om *ObjectManager) CreateMlflowDeploymentObject(name string, namespace str
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": name}},
 				Spec: corev1.PodSpec{
+					ResourceClaims: []corev1.PodResourceClaim{},
 					Containers: []corev1.Container{
 						{
 							Name:            name,

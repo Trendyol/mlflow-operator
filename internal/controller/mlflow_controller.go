@@ -42,7 +42,7 @@ import (
 type MLFlowReconciler struct {
 	K8sClient           client.Client
 	Scheme              *runtime.Scheme
-	HTTPClient          *util.HTTPClient
+	HTTPClient          util.HTTPClient
 	MlflowClient        *service.Client
 	MlflowObjectManager *mlflow.ObjectManager
 	Debug               bool
@@ -125,15 +125,11 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		r.MlFlowModelSync(deployment.Namespace, &mlflowServerConfig)
 	})
 
-	job, err := r.MlflowObjectManager.CreateMlflowWineQualityJobObject(req.Name, req.Namespace, &mlflowServerConfig)
-	if err != nil {
-		logger.Error(err, "unable to create Job for MlflowServerConfig when creating job")
-		return reconcile.Result{}, err
-	}
-
-	if err := r.CreateMLFlowWineQualityJob(ctx, job); err != nil {
-		logger.Error(err, "unable to create Job for MlflowServerConfig when pushing to k8s")
-		return reconcile.Result{}, err
+	if r.Debug {
+		if err := r.createTestModel(ctx, req, mlflowServerConfig); err != nil {
+			logger.Error(err, "unable to create Job for MlflowServerConfig when creating job for test model")
+			return reconcile.Result{}, err
+		}
 	}
 
 	if r.IsThereAnyChangeOnDeployment(deployment, existingDeployment) {
@@ -149,6 +145,18 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *MLFlowReconciler) createTestModel(ctx context.Context, req ctrl.Request, mlflowServerConfig mlflowv1beta1.MLFlow) error {
+	job, err := r.MlflowObjectManager.CreateMlflowWineQualityJobObject(req.Name, req.Namespace, &mlflowServerConfig)
+	if err != nil {
+		return err
+	}
+
+	if err := r.CreateMLFlowWineQualityJob(ctx, job); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *MLFlowReconciler) GetMlflowCRD(ctx context.Context, namespace types.NamespacedName, mlflowServerCfg *mlflowv1beta1.MLFlow) error {

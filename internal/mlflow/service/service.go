@@ -13,11 +13,11 @@ const (
 )
 
 type Client struct {
-	httpClient *util.HTTPClient
+	httpClient util.HTTPClient
 	BaseURL    string
 }
 
-func NewClient(mlflowServerCfg *mlflowv1beta1.MLFlow, httpClient *util.HTTPClient, debug bool) *Client {
+func NewClient(mlflowServerCfg *mlflowv1beta1.MLFlow, httpClient util.HTTPClient, debug bool) *Client {
 	client := &Client{
 		httpClient: httpClient,
 	}

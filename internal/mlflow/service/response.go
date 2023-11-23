@@ -33,15 +33,15 @@ type ModelVersionDetailResponse struct {
 type ModelVersionDetail struct {
 	Name                 string `json:"name"`
 	Version              string `json:"version"`
-	CreationTimestamp    int64  `json:"creation_timestamp"`
-	LastUpdatedTimestamp int64  `json:"last_updated_timestamp"`
 	CurrentStage         string `json:"current_stage"`
 	Description          string `json:"description"`
 	Source               string `json:"source"`
-	RunId                string `json:"run_id"`
+	RunID                string `json:"run_id"`
 	Status               string `json:"status"`
-	Tags                 Tags   `json:"tags"`
 	RunLink              string `json:"run_link"`
+	Tags                 Tags   `json:"tags"`
+	CreationTimestamp    int64  `json:"creation_timestamp"`
+	LastUpdatedTimestamp int64  `json:"last_updated_timestamp"`
 }
 
 type Tags []ModelVersionTag

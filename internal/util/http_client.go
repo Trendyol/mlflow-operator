@@ -3,8 +3,9 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-retryablehttp"
 	"net/http"
+
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 type HTTPClient interface {
@@ -17,7 +18,7 @@ type httpClient struct {
 
 func NewHTTPClient() HTTPClient {
 	retryableClient := retryablehttp.NewClient()
-	retryableClient.RetryMax = 3
+	retryableClient.RetryMax = 5
 
 	return &httpClient{
 		client: retryableClient,

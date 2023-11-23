@@ -27,7 +27,7 @@ type ObjectManager struct {
 func (om *ObjectManager) CreateMlflowModelDeploymentObject(config ModelDeploymentObjectConfig) (*appsv1.Deployment, error) {
 	var replicas int32 = 1
 
-	depName := config.Model.GenerateDeploymentName(config.Name)
+	depName := config.Model.GenerateDeploymentName(config.MlFlowServerConfig.Name)
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -55,7 +55,7 @@ func (om *ObjectManager) CreateMlflowModelDeploymentObject(config ModelDeploymen
 							Env: []corev1.EnvVar{
 								{
 									Name:  "MLFLOW_TRACKING_URI",
-									Value: config.MlFlowTrackingUri,
+									Value: config.MlFlowTrackingURI,
 								},
 							},
 							Resources: corev1.ResourceRequirements{
@@ -313,7 +313,7 @@ func (om *ObjectManager) CreateMlflowWineQualityJobObject(name string, namespace
 							Env: []corev1.EnvVar{
 								{
 									Name:  "TRACKING_URL",
-									Value: "http://mlflow-sample:5000",
+									Value: fmt.Sprintf("http://%s:5000", config.Name),
 								},
 							},
 						},

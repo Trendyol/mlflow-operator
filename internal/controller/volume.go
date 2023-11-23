@@ -25,7 +25,6 @@ func (r *MLFlowReconciler) ConfigureVolumesAndEnvs(ctx context.Context, req ctrl
 		if !errors.IsAlreadyExists(err) {
 			return err
 		}
-		return nil
 	}
 
 	deployment.Spec.Template.Spec.Volumes = r.MlflowObjectManager.CreateVolumeObject(simulatedVolumes)
@@ -60,6 +59,9 @@ func (r *MLFlowReconciler) CreateMlArtifactsPVC(ctx context.Context, req ctrl.Re
 
 	err = r.K8sClient.Create(ctx, mlartifactsPvc)
 	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			return mlartifactsPvc, nil
+		}
 		return nil, err
 	}
 
@@ -74,6 +76,9 @@ func (r *MLFlowReconciler) CreateMlrunsPVC(ctx context.Context, req ctrl.Request
 
 	err = r.K8sClient.Create(ctx, mlrunsPvc)
 	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			return mlrunsPvc, nil
+		}
 		return nil, err
 	}
 

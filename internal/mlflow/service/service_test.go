@@ -3,9 +3,10 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"testing"
+
 	"github.com/Trendyol/mlflow-operator/internal/mlflow"
 	"github.com/Trendyol/mlflow-operator/mock"
-	"testing"
 )
 
 func TestGetLatestModels(t *testing.T) {
@@ -27,7 +28,6 @@ func TestGetLatestModels(t *testing.T) {
 
 	// when
 	models, err := client.GetLatestModels()
-
 	// then
 	if err != nil {
 		t.Errorf("Expected no error, but got: %v", err)

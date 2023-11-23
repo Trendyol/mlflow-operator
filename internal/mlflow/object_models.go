@@ -14,6 +14,6 @@ type ModelDeploymentObjectConfig struct {
 	CPULimit           resource.Quantity
 	MemoryRequest      resource.Quantity
 	MemoryLimit        resource.Quantity
-	MlFlowTrackingUri  string
+	MlFlowTrackingURI  string
 	MlFlowModelImage   string
 }

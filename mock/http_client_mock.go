@@ -3,7 +3,7 @@ package mock
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 )
 
@@ -13,7 +13,7 @@ type MockHTTPClient struct {
 
 func (m *MockHTTPClient) GetJSON(url string, target interface{}) error {
 	if responseJSON, ok := m.Responses[url]; ok {
-		err := json.NewDecoder(ioutil.NopCloser(strings.NewReader(responseJSON))).Decode(target)
+		err := json.NewDecoder(io.NopCloser(strings.NewReader(responseJSON))).Decode(target)
 		if err != nil {
 			return err
 		}

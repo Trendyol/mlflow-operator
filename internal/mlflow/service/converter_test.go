@@ -1,16 +1,17 @@
 package service
 
 import (
-	"k8s.io/apimachinery/pkg/api/resource"
 	"reflect"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func TestTags_GetOperatorTags(t *testing.T) {
 	tests := []struct {
+		wantMlFlowOperatorTags OperatorTags
 		name                   string
 		t                      Tags
-		wantMlFlowOperatorTags OperatorTags
 	}{
 		{
 			name: "should return all resource tags",

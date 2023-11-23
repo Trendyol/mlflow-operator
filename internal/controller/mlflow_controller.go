@@ -18,6 +18,11 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	mlflowv1beta1 "github.com/Trendyol/mlflow-operator/api/v1beta1"
 	"github.com/Trendyol/mlflow-operator/internal/mlflow"
 	"github.com/Trendyol/mlflow-operator/internal/mlflow/service"
@@ -26,7 +31,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/reference"
@@ -34,8 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sync"
-	"time"
 )
 
 // MLFlowReconciler reconciles a MLFlow object
@@ -46,6 +48,7 @@ type MLFlowReconciler struct {
 	MlflowClient        *service.Client
 	MlflowObjectManager *mlflow.ObjectManager
 	Debug               bool
+	ModelSyncOnce       sync.Once
 }
 
 //+kubebuilder:rbac:groups=mlflow.trendyol.com,resources=mlflows,verbs=get;list;watch;create;update;patch;delete
@@ -82,35 +85,29 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 	}
 
-	existingDeployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: deployment.Name, Namespace: deployment.Namespace}}
-	if err = r.GetMLFlowDeployment(ctx, existingDeployment); err != nil {
-		if !errors.IsNotFound(err) {
-			logger.Error(err, "unable to get Deployment")
-			return reconcile.Result{}, err
-		}
+	existingDeployment, err := r.CreateMLFlowDeployment(ctx, deployment)
+	if err != nil {
+		logger.Error(err, "unable to create Deployment for MlflowServerConfig")
+		return reconcile.Result{}, err
+	}
 
-		if err := r.CreateMLFlowDeployment(ctx, deployment); err != nil {
-			logger.Error(err, "unable to create Deployment for MlflowServerConfig")
-			return reconcile.Result{}, err
+	r.UpdateStatus(ctx, &mlflowServerConfig, deployment, func(mlflowServerConfig *mlflowv1beta1.MLFlow, ref *corev1.ObjectReference) {
+		if mlflowServerConfig.Status.ActiveModels == nil {
+			mlflowServerConfig.Status.ActiveModels = make(map[string]corev1.ObjectReference)
 		}
+		mlflowServerConfig.Status.Active = *ref
+	})
 
-		if err = r.UpdateDeploymentStatus(ctx, &mlflowServerConfig, deployment); err != nil {
-			logger.Error(err, "unable to update status for MlflowServerConfig when creating Deployment")
-			return reconcile.Result{}, err
-		}
+	svc, err := r.MlflowObjectManager.CreateMlflowServiceObject(req.Name, req.Namespace, &mlflowServerConfig)
+	if err != nil {
+		logger.Error(err, "unable to create Client for MlflowServerConfig when creating service")
+		return reconcile.Result{}, err
+	}
 
-		service, err := r.MlflowObjectManager.CreateMlflowServiceObject(req.Name, req.Namespace, &mlflowServerConfig)
-		if err != nil {
-			logger.Error(err, "unable to create Client for MlflowServerConfig when creating service")
-			return reconcile.Result{}, err
-		}
-
-		if err = r.CreateMLFlowService(ctx, service); err != nil {
-			logger.Error(err, "unable to create Client for MlflowServerConfig when pushing to k8s")
-			return reconcile.Result{}, err
-		}
-
-		return reconcile.Result{}, nil
+	_, err = r.CreateMLFlowService(ctx, svc)
+	if err != nil {
+		logger.Error(err, "unable to create Client for MlflowServerConfig when pushing to k8s")
+		return reconcile.Result{}, err
 	}
 
 	if r.DeploymentIsNotReady(existingDeployment) {
@@ -119,10 +116,9 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	logger.Info("Deployment is ready")
-	var once sync.Once
-	once.Do(func() {
+	r.ModelSyncOnce.Do(func() {
 		r.InitializeMlflowClient(&mlflowServerConfig)
-		r.MlFlowModelSync(deployment.Namespace, &mlflowServerConfig)
+		go r.StartMlFlowModelSync(deployment.Namespace, &mlflowServerConfig)
 	})
 
 	if r.Debug {
@@ -130,18 +126,6 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			logger.Error(err, "unable to create Job for MlflowServerConfig when creating job for test model")
 			return reconcile.Result{}, err
 		}
-	}
-
-	if r.IsThereAnyChangeOnDeployment(deployment, existingDeployment) {
-		return reconcile.Result{}, nil
-	}
-
-	existingDeployment.Spec = deployment.Spec
-	logger.Info("Updating Deployment")
-
-	if err := r.UpdateDeployment(ctx, existingDeployment); err != nil {
-		logger.Error(err, "unable to update Deployment for MlflowServerConfig")
-		return reconcile.Result{}, err
 	}
 
 	return reconcile.Result{}, nil
@@ -171,12 +155,6 @@ func (r *MLFlowReconciler) InitializeMlflowClient(mlflowServerCfg *mlflowv1beta1
 	r.MlflowClient = service.NewClient(mlflowServerCfg, r.HTTPClient, r.Debug)
 }
 
-func (r *MLFlowReconciler) CreateMLFlowService(ctx context.Context, service *corev1.Service) error {
-	logger := log.FromContext(ctx)
-	logger.Info("Creating Service")
-	return r.K8sClient.Create(ctx, service)
-}
-
 func (r *MLFlowReconciler) CreateMLFlowWineQualityJob(ctx context.Context, job *batchv1.Job) error {
 	if err := r.K8sClient.Create(ctx, job); err != nil {
 		if !errors.IsAlreadyExists(err) {
@@ -186,23 +164,10 @@ func (r *MLFlowReconciler) CreateMLFlowWineQualityJob(ctx context.Context, job *
 	return nil
 }
 
-func (r *MLFlowReconciler) updateStatus(ctx context.Context, mlflowServerConfig *mlflowv1beta1.MLFlow, obj runtime.Object) error {
-	ref, err := reference.GetReference(r.Scheme, obj)
-	if err != nil {
-		return err
-	}
-
-	mlflowServerConfig.Status.Active = *ref
-
-	if err = r.K8sClient.Status().Update(ctx, mlflowServerConfig); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // SetupWithManager sets up the controller with the Manager.
 func (r *MLFlowReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.ModelSyncOnce = sync.Once{}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mlflowv1beta1.MLFlow{}).
 		Owns(&appsv1.Deployment{}).
@@ -213,47 +178,72 @@ func (r *MLFlowReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *MLFlowReconciler) MlFlowModelSync(namespace string, mlflowServerConfig *mlflowv1beta1.MLFlow) {
 	ctx := context.Background()
 	logger := log.FromContext(ctx)
-	t := time.NewTicker(time.Second * time.Duration(mlflowServerConfig.Spec.ModelSyncPeriodInMinutes))
 
-tickerLoop:
-	for range t.C {
-		models, getModelsErr := r.MlflowClient.GetLatestModels()
-		if getModelsErr != nil {
-			logger.Error(getModelsErr, "unable to get latest models")
-			continue tickerLoop
+	models, getModelsErr := r.MlflowClient.GetLatestModels()
+	if getModelsErr != nil {
+		logger.Error(getModelsErr, "unable to get latest models")
+		return
+	}
+
+	for _, model := range models {
+		modelDetails, modelDetailsErr := r.MlflowClient.GetModelVersionDetail(model.Name, model.Version)
+		if modelDetailsErr != nil {
+			logger.Error(modelDetailsErr, "failed to get model details")
+			continue
 		}
 
-	modelLoop:
-		for _, model := range models {
-			modelDetails, modelDetailsErr := r.MlflowClient.GetModelVersionDetail(model.Name, model.Version)
-			if modelDetailsErr != nil {
-				// TODO: maybe backoff?
-				logger.Error(modelDetailsErr, "failed to get model details")
-				continue modelLoop
-			}
+		mlFlowOperatorTags := modelDetails.Tags.GetOperatorTags()
+		modelDeployment, modelDeploymentErr := r.MlflowObjectManager.CreateMlflowModelDeploymentObject(mlflow.ModelDeploymentObjectConfig{
+			Name:               strings.ToLower(model.Name),
+			Namespace:          namespace,
+			MlFlowServerConfig: mlflowServerConfig,
+			Model:              model,
+			CPURequest:         mlFlowOperatorTags.CPURequest,
+			CPULimit:           mlFlowOperatorTags.CPULimit,
+			MemoryRequest:      mlFlowOperatorTags.MemoryRequest,
+			MemoryLimit:        mlFlowOperatorTags.MemoryLimit,
+			MlFlowTrackingURI:  fmt.Sprintf("http://%s:5000", mlflowServerConfig.Name),
+			MlFlowModelImage:   mlflowServerConfig.Spec.ModelImage,
+		})
+		if modelDeploymentErr != nil {
+			logger.Error(modelDeploymentErr, "unable to create Deployment for Model when creating model deployment")
+		}
 
-			mlFlowOperatorTags := modelDetails.Tags.GetOperatorTags()
-			modelDeployment, modelDeploymentErr := r.MlflowObjectManager.CreateMlflowModelDeploymentObject(mlflow.ModelDeploymentObjectConfig{
-				Name:               model.Name,
-				Namespace:          namespace,
-				MlFlowServerConfig: mlflowServerConfig,
-				Model:              model,
-				CPURequest:         mlFlowOperatorTags.CPURequest,
-				CPULimit:           mlFlowOperatorTags.CPULimit,
-				MemoryRequest:      mlFlowOperatorTags.MemoryRequest,
-				MemoryLimit:        mlFlowOperatorTags.MemoryLimit,
-				MlFlowTrackingUri:  "http://mlflow-sample:5000",        // TODO:
-				MlFlowModelImage:   mlflowServerConfig.Spec.ModelImage, // TODO: decide how to set
+		if existingDeployment, createModelDeploymentErr := r.CreateMLFlowDeployment(ctx, modelDeployment); createModelDeploymentErr != nil {
+			logger.Error(createModelDeploymentErr, "unable to create Deployment for Model when pushing to k8s")
+		} else {
+			r.UpdateStatus(ctx, mlflowServerConfig, existingDeployment, func(mlflowServerConfig *mlflowv1beta1.MLFlow, ref *corev1.ObjectReference) {
+				if mlflowServerConfig.Status.ActiveModels == nil {
+					mlflowServerConfig.Status.ActiveModels = make(map[string]corev1.ObjectReference)
+				}
+				mlflowServerConfig.Status.ActiveModels[existingDeployment.Name] = *ref
 			})
-			if modelDeploymentErr != nil {
-				logger.Error(modelDeploymentErr, "unable to create Deployment for Model when creating model deployment")
-				continue modelLoop
-			}
-
-			if createModelDeploymentErr := r.CreateMLFlowModelDeployment(ctx, modelDeployment); createModelDeploymentErr != nil {
-				logger.Error(createModelDeploymentErr, "unable to create Deployment for Model when pushing to k8s")
-				continue modelLoop
-			}
 		}
+	}
+}
+
+func (r *MLFlowReconciler) UpdateStatus(
+	ctx context.Context,
+	mlflowServerConfig *mlflowv1beta1.MLFlow,
+	obj runtime.Object,
+	callback func(mlflowServerConfig *mlflowv1beta1.MLFlow, ref *corev1.ObjectReference),
+) {
+	ref, err := reference.GetReference(r.Scheme, obj)
+	if err != nil {
+		return
+	}
+
+	callback(mlflowServerConfig, ref)
+
+	if err = r.K8sClient.Status().Update(ctx, mlflowServerConfig); err != nil {
+		return
+	}
+}
+
+func (r *MLFlowReconciler) StartMlFlowModelSync(namespace string, mlflowServerConfig *mlflowv1beta1.MLFlow) {
+	t := time.NewTicker(time.Minute * time.Duration(mlflowServerConfig.Spec.ModelSyncPeriodInMinutes))
+	r.MlFlowModelSync(namespace, mlflowServerConfig)
+	for range t.C {
+		r.MlFlowModelSync(namespace, mlflowServerConfig)
 	}
 }

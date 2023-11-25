@@ -1,8 +1,11 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/url"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"time"
 
 	mlflowv1beta1 "github.com/Trendyol/mlflow-operator/api/v1beta1"
 	"github.com/Trendyol/mlflow-operator/internal/mlflow"
@@ -44,9 +47,9 @@ func (m *Client) GetLatestModels() (mlflow.Models, error) {
 		var response RegisteredModelsResponse
 		var err error
 		if nextPageToken != nil {
-			err = m.httpClient.GetJSON(fmt.Sprintf("%s/registered-models/search?page_token=%s", m.BaseURL, *nextPageToken), &response)
+			err = m.httpClient.SendGetRequest(fmt.Sprintf("%s/registered-models/search?page_token=%s", m.BaseURL, *nextPageToken), &response)
 		} else {
-			err = m.httpClient.GetJSON(fmt.Sprintf("%s/registered-models/search", m.BaseURL), &response)
+			err = m.httpClient.SendGetRequest(fmt.Sprintf("%s/registered-models/search", m.BaseURL), &response)
 		}
 
 		if err != nil {
@@ -75,6 +78,27 @@ func (m *Client) GetLatestModels() (mlflow.Models, error) {
 	return models, nil
 }
 
+func (m *Client) UpdateDescription(name string) error {
+	ctx := context.Background()
+	logger := log.FromContext(ctx)
+
+	updateTime := time.Now().Format("15:04:05 2006-01-02")
+	req := map[string]interface{}{
+		"name":        name,
+		"description": fmt.Sprintf("Your Mlflow deployment has been deployed at %s", updateTime),
+	}
+
+	var r UpdateDescriptionResponse
+	err := m.httpClient.SendPatchRequest(fmt.Sprintf("%s/registered-models/update", m.BaseURL), req, &r)
+	if err != nil {
+		return err
+	}
+
+	logger.V(1).Info("Model description updated for model", "Name", r.RegisteredModel.Name)
+
+	return nil
+}
+
 func (m *Client) getModelVersions(name string) ([]ModelVersion, error) {
 	var versions []ModelVersion
 	var nextPageToken *string
@@ -89,7 +113,7 @@ func (m *Client) getModelVersions(name string) ([]ModelVersion, error) {
 			queryParams.Add("page_token", *nextPageToken)
 		}
 
-		err := m.httpClient.GetJSON(fmt.Sprintf("%s/model-versions/search?%s", m.BaseURL, queryParams.Encode()), &response)
+		err := m.httpClient.SendGetRequest(fmt.Sprintf("%s/model-versions/search?%s", m.BaseURL, queryParams.Encode()), &response)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +133,7 @@ func (m *Client) GetModelVersionDetail(name, version string) (*ModelVersionDetai
 	queryParams := url.Values{}
 	queryParams.Add("name", name)
 	queryParams.Add("version", version)
-	err := m.httpClient.GetJSON(fmt.Sprintf("%s/model-versions/get?%s", m.BaseURL, queryParams.Encode()), &response)
+	err := m.httpClient.SendGetRequest(fmt.Sprintf("%s/model-versions/get?%s", m.BaseURL, queryParams.Encode()), &response)
 	if err != nil {
 		return nil, err
 	}

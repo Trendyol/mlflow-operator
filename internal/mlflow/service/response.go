@@ -50,3 +50,7 @@ type ModelVersionTag struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
+
+type UpdateDescriptionResponse struct {
+	RegisteredModel RegisteredModel `json:"registered_model"`
+}

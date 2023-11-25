@@ -85,7 +85,7 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 	}
 
-	existingDeployment, err := r.CreateMLFlowDeployment(ctx, deployment)
+	existingDeployment, err := r.CreateOrUpdateDeployment(ctx, deployment)
 	if err != nil {
 		logger.Error(err, "unable to create Deployment for MlflowServerConfig")
 		return reconcile.Result{}, err
@@ -104,7 +104,7 @@ func (r *MLFlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return reconcile.Result{}, err
 	}
 
-	_, err = r.CreateMLFlowService(ctx, svc)
+	_, err = r.CreateOrUpdateService(ctx, svc)
 	if err != nil {
 		logger.Error(err, "unable to create Client for MlflowServerConfig when pushing to k8s")
 		return reconcile.Result{}, err
@@ -209,15 +209,22 @@ func (r *MLFlowReconciler) MlFlowModelSync(namespace string, mlflowServerConfig 
 			logger.Error(modelDeploymentErr, "unable to create Deployment for Model when creating model deployment")
 		}
 
-		if existingDeployment, createModelDeploymentErr := r.CreateMLFlowDeployment(ctx, modelDeployment); createModelDeploymentErr != nil {
-			logger.Error(createModelDeploymentErr, "unable to create Deployment for Model when pushing to k8s")
-		} else {
-			r.UpdateStatus(ctx, mlflowServerConfig, existingDeployment, func(mlflowServerConfig *mlflowv1beta1.MLFlow, ref *corev1.ObjectReference) {
-				if mlflowServerConfig.Status.ActiveModels == nil {
-					mlflowServerConfig.Status.ActiveModels = make(map[string]corev1.ObjectReference)
-				}
-				mlflowServerConfig.Status.ActiveModels[existingDeployment.Name] = *ref
-			})
+		existingDeployment, err := r.CreateOrUpdateDeployment(ctx, modelDeployment)
+		if err != nil {
+			logger.Error(err, "unable to create Deployment for Model when pushing to k8s")
+			return
+		}
+
+		r.UpdateStatus(ctx, mlflowServerConfig, existingDeployment, func(mlflowServerConfig *mlflowv1beta1.MLFlow, ref *corev1.ObjectReference) {
+			if mlflowServerConfig.Status.ActiveModels == nil {
+				mlflowServerConfig.Status.ActiveModels = make(map[string]corev1.ObjectReference)
+			}
+			mlflowServerConfig.Status.ActiveModels[existingDeployment.Name] = *ref
+		})
+
+		err = r.MlflowClient.UpdateDescription(model.Name)
+		if err != nil {
+			logger.Error(err, "unable to update description")
 		}
 	}
 }

@@ -65,6 +65,38 @@ func TestGetLatestModels(t *testing.T) {
 	}
 }
 
+func TestUpdateDescription(t *testing.T) {
+	// given
+	response, _ := json.Marshal(UpdateDescriptionResponse{RegisteredModel{
+		Name: "ModelA",
+		LatestVersions: []LatestVersion{{
+			Name:         "Model1",
+			Version:      "1",
+			CurrentStage: "Production",
+			Status:       "Active",
+		}},
+	}})
+	responses := map[string]string{
+		"http://example.com/registered-models/update": string(response),
+	}
+	mockClient := &mock.MockHTTPClient{
+		Responses: responses,
+	}
+
+	client := &Client{
+		httpClient: mockClient,
+		BaseURL:    "http://example.com",
+	}
+
+	// when
+	err := client.UpdateDescription("ModelA")
+
+	// then
+	if err != nil {
+		t.Errorf("Expected no error, but got: %v", err)
+	}
+}
+
 func generateRegisteredModelsResponse() string {
 	latestVersion1 := LatestVersion{
 		Name:         "Model1",

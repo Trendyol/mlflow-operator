@@ -61,7 +61,7 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&debug, "debug", false, "Enable debug mode")
+	flag.BoolVar(&debug, "debug", true, "Enable debug mode")
 	opts := zap.Options{
 		Development: true,
 	}

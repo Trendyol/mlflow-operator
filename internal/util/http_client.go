@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,7 +10,8 @@ import (
 )
 
 type HTTPClient interface {
-	GetJSON(url string, target interface{}) error
+	SendGetRequest(url string, target interface{}) error
+	SendPatchRequest(url string, data interface{}, target interface{}) error
 }
 
 type httpClient struct {
@@ -25,16 +27,50 @@ func NewHTTPClient() HTTPClient {
 	}
 }
 
-func (h *httpClient) GetJSON(url string, target interface{}) error {
+func (h *httpClient) SendGetRequest(url string, target interface{}) error {
 	resp, err := h.client.Get(url)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTP request failed with status: %s", resp.Status)
 	}
 
-	return json.NewDecoder(resp.Body).Decode(target)
+	r := json.NewDecoder(resp.Body).Decode(target)
+	err = resp.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	return r
+}
+
+func (h *httpClient) SendPatchRequest(url string, data interface{}, target interface{}) error {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	req, err := retryablehttp.NewRequest("PATCH", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	resp, err := h.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP request failed with status: %s", resp.Status)
+	}
+
+	r := json.NewDecoder(resp.Body).Decode(target)
+	err = resp.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	return r
 }

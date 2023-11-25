@@ -11,7 +11,36 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func (r *MLFlowReconciler) GetMLFlowService(ctx context.Context, name string, namespace string, service *corev1.Service) error {
+func (r *MLFlowReconciler) CreateOrUpdateService(ctx context.Context, service *corev1.Service) (*corev1.Service, error) {
+	logger := log.FromContext(ctx)
+	existService := &corev1.Service{}
+	err := r.getMLFlowService(ctx, service.Name, service.Namespace, existService)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = r.K8sClient.Create(ctx, service)
+			if err != nil {
+				return nil, err
+			}
+			return service, nil
+		}
+		return nil, err
+	}
+
+	if r.isThereAnyChangeOnService(service, existService) {
+		logger.Info("Updating Service")
+		existService.Spec = service.Spec
+		err := r.K8sClient.Update(ctx, existService)
+		if err != nil {
+			return nil, err
+		}
+		return service, nil
+	}
+
+	return existService, nil
+}
+
+func (r *MLFlowReconciler) getMLFlowService(ctx context.Context, name string, namespace string, service *corev1.Service) error {
 	namespacedName := types.NamespacedName{
 		Name:      name,
 		Namespace: namespace,
@@ -19,36 +48,6 @@ func (r *MLFlowReconciler) GetMLFlowService(ctx context.Context, name string, na
 	return r.K8sClient.Get(ctx, namespacedName, service)
 }
 
-func (r *MLFlowReconciler) CreateMLFlowService(ctx context.Context, service *corev1.Service) (*corev1.Service, error) {
-	logger := log.FromContext(ctx)
-	existService := &corev1.Service{}
-	err := r.GetMLFlowService(ctx, service.Name, service.Namespace, existService)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return nil, err
-		} else {
-			if err := r.K8sClient.Create(ctx, service); err != nil {
-				return nil, err
-			} else {
-				return service, nil
-			}
-		}
-	} else {
-		if r.IsThereAnyChangeOnService(service, existService) {
-			logger.Info("Updating Service")
-			existService.Spec = service.Spec
-			err := r.K8sClient.Update(ctx, existService)
-			if err != nil {
-				return nil, err
-			} else {
-				return service, nil
-			}
-		} else {
-			return existService, nil
-		}
-	}
-}
-
-func (r *MLFlowReconciler) IsThereAnyChangeOnService(oldService *corev1.Service, currentService *corev1.Service) bool {
+func (r *MLFlowReconciler) isThereAnyChangeOnService(oldService *corev1.Service, currentService *corev1.Service) bool {
 	return !equality.Semantic.DeepDerivative(oldService.Spec, currentService.Spec)
 }

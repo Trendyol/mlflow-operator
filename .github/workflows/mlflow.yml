@@ -26,10 +26,7 @@ jobs:
 
       - name: Install Operator
         run: make install
-        env:
-          CB_VERSION: ${{ matrix.version }}
+
 
       - name: Run Operator
         run: make run
-        env:
-          CB_VERSION: ${{ matrix.version }}

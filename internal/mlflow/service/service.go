@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
+	"net/url"
+
 	mlflowv1beta1 "github.com/Trendyol/mlflow-operator/api/v1beta1"
 	"github.com/Trendyol/mlflow-operator/internal/mlflow"
 	"github.com/Trendyol/mlflow-operator/internal/util"
-	"net/url"
+
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 

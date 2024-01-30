@@ -15,7 +15,6 @@ func (r *MLFlowReconciler) CreateOrUpdateService(ctx context.Context, service *c
 	logger := log.FromContext(ctx)
 	existService := &corev1.Service{}
 	err := r.getMLFlowService(ctx, service.Name, service.Namespace, existService)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			err = r.K8sClient.Create(ctx, service)

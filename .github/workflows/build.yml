@@ -32,6 +32,12 @@ jobs:
       - name: Build
         run: go build -v ./...
 
+      - name: Install Operator
+        run: make install
+
+      - name: Run Operator
+        run: make run
+
       - name: Test
         run: go test -v ./...
 

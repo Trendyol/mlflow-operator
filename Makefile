@@ -38,6 +38,19 @@ all: build
 # More info on the awk command:
 # http://linuxcommand.org/lc3_adv_awk.php
 
+default: init
+
+init:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
+	go install golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment@v0.15.0
+
+linter:
+	fieldalignment -fix ./...
+	golangci-lint run -c .golangci.yml --timeout=5m -v --fix
+
+lint:
+	golangci-lint run -c .golangci.yml --timeout=5m -v
+
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
@@ -63,10 +76,6 @@ vet: ## Run go vet against code.
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
-
-.PHONY: linter
-linter:
-	golangci-lint run -c .golangci.yml --timeout=5m -v --fix
 
 ##@ Build
 

@@ -170,6 +170,7 @@ func (om *ObjectManager) CreateMlflowDeploymentObject(name string, namespace str
 		"postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)",
 	}
 
+	// TODO add this values to config map
 	env := []corev1.EnvVar{
 		{
 			Name:  "AWS_ACCESS_KEY_ID",

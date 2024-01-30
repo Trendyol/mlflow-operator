@@ -9,6 +9,7 @@ import (
 	"github.com/Trendyol/mlflow-operator/mock"
 )
 
+// nolint:typecheck
 func TestGetLatestModels(t *testing.T) {
 	// given
 	responses := map[string]string{

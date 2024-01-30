@@ -82,7 +82,7 @@ func (m *Client) UpdateDescription(name string, message string) error {
 
 	req := map[string]interface{}{
 		"name":        name,
-		"description": fmt.Sprintf("%s", message),
+		"description": message,
 	}
 
 	var r UpdateDescriptionResponse

@@ -212,7 +212,7 @@ func (r *MLFlowReconciler) MlFlowModelSync(namespace string, mlflowServerConfig 
 		existingDeployment, err := r.CreateOrUpdateDeployment(ctx, modelDeployment)
 		if err != nil {
 			logger.Error(err, "unable to create Deployment for Model when pushing to k8s")
-			r.updateDescription(model.Name, fmt.Sprintf("Your Mlflow deployment has been failed to deploy"))
+			r.updateDescription(model.Name, "Your Mlflow deployment has been failed to deploy")
 			return
 		}
 
@@ -222,7 +222,7 @@ func (r *MLFlowReconciler) MlFlowModelSync(namespace string, mlflowServerConfig 
 			}
 			mlflowServerConfig.Status.ActiveModels[existingDeployment.Name] = *ref
 		})
-		r.updateDescription(model.Name, fmt.Sprintf("Your Mlflow deployment has been deployed"))
+		r.updateDescription(model.Name, "Your Mlflow deployment has been deployed")
 	}
 }
 

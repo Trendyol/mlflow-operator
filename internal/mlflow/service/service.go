@@ -3,13 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-	"time"
-
 	mlflowv1beta1 "github.com/Trendyol/mlflow-operator/api/v1beta1"
 	"github.com/Trendyol/mlflow-operator/internal/mlflow"
 	"github.com/Trendyol/mlflow-operator/internal/util"
+	"net/url"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -78,19 +76,19 @@ func (m *Client) GetLatestModels() (mlflow.Models, error) {
 	return models, nil
 }
 
-func (m *Client) UpdateDescription(name string) error {
+func (m *Client) UpdateDescription(name string, message string) error {
 	ctx := context.Background()
 	logger := log.FromContext(ctx)
 
-	updateTime := time.Now().Format("15:04:05 2006-01-02")
 	req := map[string]interface{}{
 		"name":        name,
-		"description": fmt.Sprintf("Your Mlflow deployment has been deployed at %s", updateTime),
+		"description": fmt.Sprintf("%s", message),
 	}
 
 	var r UpdateDescriptionResponse
 	err := m.httpClient.SendPatchRequest(fmt.Sprintf("%s/registered-models/update", m.BaseURL), req, &r)
 	if err != nil {
+		logger.V(1).Error(err, "unable to update description")
 		return err
 	}
 

@@ -89,7 +89,7 @@ func TestUpdateDescription(t *testing.T) {
 	}
 
 	// when
-	err := client.UpdateDescription("ModelA")
+	err := client.UpdateDescription("ModelA", "message")
 
 	// then
 	if err != nil {

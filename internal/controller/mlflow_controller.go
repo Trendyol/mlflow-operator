@@ -212,6 +212,7 @@ func (r *MLFlowReconciler) MlFlowModelSync(namespace string, mlflowServerConfig 
 		existingDeployment, err := r.CreateOrUpdateDeployment(ctx, modelDeployment)
 		if err != nil {
 			logger.Error(err, "unable to create Deployment for Model when pushing to k8s")
+			r.updateDescription(model.Name, fmt.Sprintf("Your Mlflow deployment has been failed to deploy"))
 			return
 		}
 
@@ -221,11 +222,7 @@ func (r *MLFlowReconciler) MlFlowModelSync(namespace string, mlflowServerConfig 
 			}
 			mlflowServerConfig.Status.ActiveModels[existingDeployment.Name] = *ref
 		})
-
-		err = r.MlflowClient.UpdateDescription(model.Name)
-		if err != nil {
-			logger.Error(err, "unable to update description")
-		}
+		r.updateDescription(model.Name, fmt.Sprintf("Your Mlflow deployment has been deployed"))
 	}
 }
 
@@ -252,5 +249,14 @@ func (r *MLFlowReconciler) StartMlFlowModelSync(namespace string, mlflowServerCo
 	r.MlFlowModelSync(namespace, mlflowServerConfig)
 	for range t.C {
 		r.MlFlowModelSync(namespace, mlflowServerConfig)
+	}
+}
+
+func (r *MLFlowReconciler) updateDescription(name string, message string) {
+	updateTime := time.Now().Format("15:04:05 2006-01-02")
+	msg := fmt.Sprintf("%s at %s", message, updateTime)
+	err := r.MlflowClient.UpdateDescription(name, msg)
+	if err != nil {
+		return
 	}
 }

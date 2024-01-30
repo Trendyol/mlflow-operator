@@ -11,6 +11,12 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+GO_BUILD_RECIPE=\
+	GOOS=$(GOOS) \
+	GOARCH=$(GOARCH) \
+	CGO_ENABLED=0 \
+	go build -ldflags="$(GO_BUILD_LDFLAGS)"
+
 # CONTAINER_TOOL defines the container tool to be used for building images.
 # Be aware that the target commands are only tested with Docker which is
 # scaffolded by default. However, you might want to replace it to use other
@@ -50,6 +56,10 @@ linter:
 
 lint:
 	golangci-lint run -c .golangci.yml --timeout=5m -v
+
+.PHONY: operator
+operator:
+	$(GO_BUILD_RECIPE) -o $@ cmd/main.go
 
 .PHONY: help
 help: ## Display this help.

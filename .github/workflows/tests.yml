@@ -21,8 +21,8 @@ jobs:
         with:
           go-version: '1.20'
 
-      - name: Integration Test
-        run: go test -v test/integration/integration_test.go
+      - name: Suite Test
+        run: go test -v test/suite_test.go
         env:
           INPUT_PUBLISH: false
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

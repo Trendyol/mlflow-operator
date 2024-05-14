@@ -6,7 +6,7 @@
 
 ### Running on the local
 
-> Check [LOCAL.md](LOCAL.md) steps for running on your local machine.
+> Check [local](LOCAL.md) steps for running on your local machine.
 
 ### Running on the cluster
 

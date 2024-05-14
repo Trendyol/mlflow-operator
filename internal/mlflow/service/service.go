@@ -73,6 +73,8 @@ func (m *Client) GetLatestModels() (mlflow.Models, error) {
 
 		if response.NextPageToken == nil {
 			break
+		} else {
+			nextPageToken = response.NextPageToken
 		}
 	}
 
@@ -123,6 +125,8 @@ func (m *Client) getModelVersions(name string) ([]ModelVersion, error) {
 
 		if response.NextPageToken == nil {
 			break
+		} else {
+			nextPageToken = response.NextPageToken
 		}
 	}
 

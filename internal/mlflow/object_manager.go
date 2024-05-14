@@ -170,6 +170,7 @@ func (om *ObjectManager) CreateMlflowDeploymentObject(name string, namespace str
 		"postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)",
 	}
 
+	// TODO add this values to config map
 	env := []corev1.EnvVar{
 		{
 			Name:  "AWS_ACCESS_KEY_ID",
@@ -268,7 +269,7 @@ func (om *ObjectManager) CreateMlflowPVCObject(name string, namespace string, fo
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				"ReadWriteOnce",
 			},
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					"storage": resource.MustParse("1Gi"),
 				},

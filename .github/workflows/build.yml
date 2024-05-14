@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
@@ -28,13 +28,17 @@ jobs:
 
       - name: Lint
         run: |
+          make init
           make lint
 
       - name: Install dependencies
-        run: go get .
+        run: go get -u -d ./...
 
       - name: Build
         run: go build -v ./...
+
+      - name: Install Operator
+        run: make operator
 
       - name: Test
         run: go test -v ./...

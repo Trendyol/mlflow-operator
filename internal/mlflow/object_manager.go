@@ -251,7 +251,7 @@ func (om *ObjectManager) CreateMlflowDeploymentObject(name string, namespace str
 }
 
 func (om *ObjectManager) CreateMlflowPVCObject(name string, namespace string, folder string, config *mlflowv1beta1.MLFlow) (*corev1.PersistentVolumeClaim, error) {
-	storageClassName := "hostpath"
+	storageClassName := "local-path"
 	volumeMode := corev1.PersistentVolumeFilesystem
 
 	pvc := &corev1.PersistentVolumeClaim{

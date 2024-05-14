@@ -90,7 +90,6 @@ func TestUpdateDescription(t *testing.T) {
 
 	// when
 	err := client.UpdateDescription("ModelA")
-
 	// then
 	if err != nil {
 		t.Errorf("Expected no error, but got: %v", err)

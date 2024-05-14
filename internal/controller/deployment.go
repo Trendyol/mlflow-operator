@@ -14,7 +14,6 @@ func (r *MLFlowReconciler) CreateOrUpdateDeployment(ctx context.Context, deploym
 	logger := log.FromContext(ctx)
 	existDeployment := &appsv1.Deployment{}
 	err := r.getMLFlowDeployment(ctx, deployment.Name, deployment.Namespace, existDeployment)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			err = r.K8sClient.Create(ctx, deployment)

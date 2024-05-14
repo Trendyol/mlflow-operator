@@ -9,6 +9,7 @@ import (
 	"github.com/Trendyol/mlflow-operator/mock"
 )
 
+// nolint:typecheck
 func TestGetLatestModels(t *testing.T) {
 	// given
 	responses := map[string]string{
@@ -89,7 +90,7 @@ func TestUpdateDescription(t *testing.T) {
 	}
 
 	// when
-	err := client.UpdateDescription("ModelA")
+	err := client.UpdateDescription("ModelA", "message")
 	// then
 	if err != nil {
 		t.Errorf("Expected no error, but got: %v", err)

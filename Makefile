@@ -47,8 +47,8 @@ all: build
 default: init
 
 init:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
-	go install golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment@v0.15.0
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.58.1
+	go install golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment@v0.21.0
 
 linter:
 	fieldalignment -fix ./...

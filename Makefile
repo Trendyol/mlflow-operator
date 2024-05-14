@@ -68,6 +68,10 @@ test: manifests generate fmt vet envtest ## Run tests.
 linter:
 	golangci-lint run -c .golangci.yml --timeout=5m -v --fix
 
+.PHONY: lint
+lint:
+	golangci-lint run -c .golangci.yml --timeout=5m -v
+
 ##@ Build
 
 .PHONY: build

@@ -1,3 +1,5 @@
+
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Trendyol/mlflow-operator/badge)](https://scorecard.dev/viewer/?uri=github.com/Trendyol/mlflow-operator)
 # mlflow-operator
 
 ## Description
